@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { 
   Sparkles, 
   LayoutDashboard, 
@@ -14,11 +15,15 @@ import {
   X, 
   Flame, 
   Coins, 
-  UserCircle2 
+  UserCircle2,
+  Sun,
+  Moon,
+  PlusCircle
 } from 'lucide-react';
 
 const Navbar = () => {
   const { currentUser, logout, login, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -86,6 +91,11 @@ const Navbar = () => {
               <Bot size={17} /> AI Generator
             </NavLink>
           </li>
+          <li>
+            <NavLink to="/create-quiz" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ color: 'var(--accent-cyan)' }}>
+              <PlusCircle size={17} /> Create Quiz
+            </NavLink>
+          </li>
           {isAdmin && (
             <li>
               <NavLink to="/admin" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ color: '#ec4899' }}>
@@ -97,6 +107,17 @@ const Navbar = () => {
 
         {/* Right Actions / User Status */}
         <div className="nav-actions">
+          {/* Light / Dark Mode Toggle */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="btn-theme-toggle"
+            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            aria-label="Toggle Theme"
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
           {currentUser ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
               {/* Quick Role Switcher for Phase 1 Testing */}
@@ -204,11 +225,25 @@ const Navbar = () => {
           <NavLink to="/ai-quiz" className="nav-link" onClick={closeMobileMenu}>
             <Bot size={18} /> AI Generator
           </NavLink>
+          <NavLink to="/create-quiz" className="nav-link" onClick={closeMobileMenu} style={{ color: 'var(--accent-cyan)' }}>
+            <PlusCircle size={18} /> Create Quiz
+          </NavLink>
           {isAdmin && (
             <NavLink to="/admin" className="nav-link" onClick={closeMobileMenu} style={{ color: '#ec4899' }}>
               <ShieldCheck size={18} /> Admin Panel
             </NavLink>
           )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid var(--border-subtle)' }}>
+            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Appearance Theme</span>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="btn btn-secondary btn-sm"
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              {theme === 'dark' ? <><Sun size={15} /> Light Mode</> : <><Moon size={15} /> Dark Mode</>}
+            </button>
+          </div>
           {currentUser && (
             <button onClick={handleLogout} className="btn btn-danger btn-sm" style={{ marginTop: '0.5rem', justifyContent: 'flex-start' }}>
               <LogOut size={16} /> Sign Out

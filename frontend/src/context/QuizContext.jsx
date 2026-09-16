@@ -205,16 +205,16 @@ export const QuizProvider = ({ children }) => {
     );
   };
 
-  // Admin Operations with Live API Integration
+  // Quiz Operations with Live API Integration
   const addQuiz = async (newQuiz) => {
     let created = null;
     try {
-      const res = await api.post('/admin/quizzes', newQuiz);
+      const res = await api.post('/quizzes', newQuiz);
       if (res?.data?.quiz) {
         created = res.data.quiz;
       }
     } catch (e) {
-      console.warn('[ADMIN NOTICE] Local quiz creation fallback:', e.message);
+      console.warn('[QUIZ NOTICE] API quiz creation fallback:', e.message);
     }
 
     if (!created) {

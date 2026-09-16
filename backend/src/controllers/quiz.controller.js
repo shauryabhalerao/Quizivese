@@ -272,3 +272,107 @@ export const getCategories = async (req, res, next) => {
     next(error);
   }
 };
+
+export const createPublicQuiz = async (req, res, next) => {
+  try {
+    const { 
+      title, 
+      description, 
+      category, 
+      difficulty = 'Medium', 
+      timeLimitMinutes = 15, 
+      questions = [],
+      targetGrade
+    } = req.body;
+
+    const quizId = `quiz-${Date.now()}`;
+    const authorId = req.user?.id || 'usr-teacher-custom';
+    const authorName = req.user?.name || req.body.createdBy || 'Educator';
+
+    const calculatedXp = questions.length * 75;
+    const calculatedPoints = questions.length * 30;
+
+    const newQuiz = {
+      id: quizId,
+      title: title.trim(),
+      description: description?.trim() || `Educational quiz on ${title.trim()}.`,
+      category: category.trim(),
+      difficulty,
+      timeLimitMinutes: parseInt(timeLimitMinutes, 10) || 15,
+      targetGrade: targetGrade || 'General Audience',
+      xpReward: calculatedXp,
+      pointsReward: calculatedPoints,
+      isActive: true,
+      totalAttempts: 0,
+      createdBy: authorName,
+      createdAt: new Date().toISOString(),
+      questions: questions.map((q, idx) => ({
+        id: q.id || `q-${Date.now()}-${idx}`,
+        questionText: q.questionText.trim(),
+        options: q.options.map(opt => String(opt).trim()),
+        correctAnswer: Number(q.correctAnswer) || 0,
+        explanation: q.explanation ? q.explanation.trim() : `The correct option is choice ${['A', 'B', 'C', 'D'][Number(q.correctAnswer) || 0]}.`,
+        difficulty: q.difficulty || difficulty,
+        topic: q.topic ? q.topic.trim() : category.trim(),
+        order_index: idx
+      }))
+    };
+
+    // 1. Try persisting to PostgreSQL
+    const client = await pool.connect().catch(() => null);
+    if (client) {
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          `INSERT INTO quizzes (id, title, description, category, difficulty, time_limit_minutes, xp_reward, points_reward, is_active, created_by)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, TRUE, $9)`,
+          [
+            quizId,
+            newQuiz.title,
+            newQuiz.description,
+            newQuiz.category,
+            newQuiz.difficulty,
+            newQuiz.timeLimitMinutes,
+            newQuiz.xpReward,
+            newQuiz.pointsReward,
+            authorId
+          ]
+        );
+
+        for (let i = 0; i < newQuiz.questions.length; i++) {
+          const q = newQuiz.questions[i];
+          await client.query(
+            `INSERT INTO questions (id, quiz_id, question_text, correct_answer_index, explanation, difficulty, topic, order_index)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [q.id, quizId, q.questionText, q.correctAnswer, q.explanation, q.difficulty, q.topic, i]
+          );
+
+          for (let o = 0; o < q.options.length; o++) {
+            await client.query(
+              `INSERT INTO question_options (id, question_id, option_index, option_text)
+               VALUES ($1, $2, $3, $4)`,
+              [`opt-${q.id}-${o}`, q.id, o, q.options[o]]
+            );
+          }
+        }
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('[DB NOTICE] Could not save quiz to postgres, saved to memory store:', err.message);
+      } finally {
+        client.release();
+      }
+    }
+
+    // 2. Add to in-memory store
+    quizzesDb.unshift(newQuiz);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Quiz created and published successfully',
+      data: { quiz: newQuiz }
+    });
+  } catch (error) {
+    next(error);
+  }
+};

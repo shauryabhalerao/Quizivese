@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuiz } from '../context/QuizContext';
 import QuizCard from '../components/QuizCard';
-import { Search, Filter, Sparkles, HelpCircle, Layers } from 'lucide-react';
+import { Search, Filter, Sparkles, HelpCircle, Layers, PlusCircle } from 'lucide-react';
 
 const QuizzesPage = () => {
   const { quizzes } = useQuiz();
@@ -34,12 +35,29 @@ const QuizzesPage = () => {
   return (
     <div className="container">
       {/* Page Title & Search Bar */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <span className="badge badge-indigo" style={{ marginBottom: '0.5rem' }}>Exploration Arena</span>
-        <h1 style={{ fontSize: '2.25rem', marginBottom: '0.5rem' }}>Browse Quizzes</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-          Select an assessment to challenge your understanding or practice for technical interviews.
-        </p>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        marginBottom: '2.5rem'
+      }}>
+        <div>
+          <span className="badge badge-indigo" style={{ marginBottom: '0.5rem' }}>Exploration Arena</span>
+          <h1 style={{ fontSize: '2.25rem', marginBottom: '0.5rem' }}>Browse Quizzes</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+            Select an assessment to challenge your understanding, or create a custom test for your classroom.
+          </p>
+        </div>
+
+        <Link 
+          to="/create-quiz" 
+          className="btn btn-gold" 
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 14px var(--gold-glow)' }}
+        >
+          <PlusCircle size={18} /> Create a Quiz
+        </Link>
       </div>
 
       {/* Filter Toolbar */}
