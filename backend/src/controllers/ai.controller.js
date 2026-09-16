@@ -6,7 +6,9 @@ import { quizzesDb } from './quiz.controller.js';
 
 export const generateAiQuiz = async (req, res, next) => {
   try {
-    const { topic, difficulty = 'Medium', questionCount = 4, questionStyle = 'Multiple Choice' } = req.body;
+    const { topic, difficulty = 'Medium', questionStyle = 'Multiple Choice' } = req.body;
+    const requestedCount = parseInt(req.body.numQuestions || req.body.questionCount || 4, 10);
+    const validNumQuestions = Math.min(Math.max(1, isNaN(requestedCount) ? 4 : requestedCount), 50);
     const userId = req.user?.id || 'usr-std-101';
 
     if (!topic || !topic.trim()) {
@@ -17,7 +19,7 @@ export const generateAiQuiz = async (req, res, next) => {
     const synthesizedQuiz = await aiService.generateQuiz({
       topic: topic.trim(),
       difficulty,
-      numQuestions: questionCount,
+      numQuestions: validNumQuestions,
       questionStyle
     });
 

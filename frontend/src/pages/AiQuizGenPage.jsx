@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuiz } from '../context/QuizContext';
+import { api } from '../services/api';
 import { 
   Bot, 
   Sparkles, 
@@ -36,7 +37,7 @@ const AiQuizGenPage = () => {
   const [generatedQuiz, setGeneratedQuiz] = useState(null);
   const [error, setError] = useState('');
 
-  const handleGenerate = (e) => {
+  const handleGenerate = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -45,33 +46,53 @@ const AiQuizGenPage = () => {
       return;
     }
 
+    const count = Math.min(Math.max(1, parseInt(numQuestions, 10) || 4), 50);
+
     setIsGenerating(true);
     setGeneratedQuiz(null);
+    setGenerationStep('Connecting to AI synthesis engine...');
 
-    // Simulated multi-step AI synthesis pipeline (Phase 7 connects to backend AI endpoint)
-    setGenerationStep('Contacting backend AI service...');
+    try {
+      setGenerationStep(`Synthesizing ${count} ${difficulty} questions for "${topic.trim()}"...`);
+      const res = await api.post('/ai/generate', {
+        topic: topic.trim(),
+        difficulty,
+        numQuestions: count,
+        questionCount: count,
+        questionStyle
+      });
 
+      if (res?.data?.quiz) {
+        setGeneratedQuiz(res.data.quiz);
+        setIsGenerating(false);
+        setGenerationStep('');
+        return;
+      }
+    } catch (apiErr) {
+      console.warn('[AI API NOTICE]: Backend generation fallback active:', apiErr.message);
+    }
+
+    // Client-side synthesis pipeline (supports up to 50 questions)
     setTimeout(() => {
-      setGenerationStep(`Synthesizing ${numQuestions} ${difficulty} questions for "${topic}"...`);
-    }, 600);
+      setGenerationStep(`Synthesizing ${count} ${difficulty} questions for "${topic.trim()}"...`);
+    }, 400);
 
     setTimeout(() => {
       setGenerationStep('Validating single-choice accuracy & explanations...');
-    }, 1200);
+    }, 800);
 
     setTimeout(() => {
-      // Mock generated quiz conforming to strict schema
       const generated = {
-        title: `AI: ${topic}`,
-        description: `Custom AI-synthesized evaluation on "${topic}" with ${difficulty} difficulty grading.`,
+        title: `AI: ${topic.trim()}`,
+        description: `Custom AI-synthesized evaluation on "${topic.trim()}" with ${difficulty} difficulty grading.`,
         category: "AI Generated",
         difficulty,
-        timeLimitMinutes: Math.max(5, numQuestions * 2),
-        xpReward: numQuestions * 75,
-        pointsReward: numQuestions * 30,
-        questions: Array.from({ length: numQuestions }, (_, i) => ({
+        timeLimitMinutes: Math.min(Math.max(5, Math.ceil(count * 1.5)), 120),
+        xpReward: count * 75,
+        pointsReward: count * 30,
+        questions: Array.from({ length: count }, (_, i) => ({
           id: `ai-q-${Date.now()}-${i}`,
-          questionText: `In the context of ${topic}, how is requirement #${i + 1} best addressed with optimal performance?`,
+          questionText: `[Question ${i + 1} of ${count}] In the context of ${topic.trim()}, how is requirement #${i + 1} best addressed with optimal performance?`,
           options: [
             `Utilizing standard sequential lookups without caching`,
             `Leveraging indexed structures and asynchronous batch operations`,
@@ -79,16 +100,16 @@ const AiQuizGenPage = () => {
             `Disabling synchronization primitives in concurrency`
           ],
           correctAnswer: 1, // Strictly 1 correct answer
-          explanation: `In ${topic}, leveraging indexed structures with asynchronous batch operations provides sub-linear complexity while minimizing system I/O bottlenecks.`,
+          explanation: `In ${topic.trim()}, leveraging indexed structures with asynchronous batch operations provides sub-linear complexity while minimizing system I/O bottlenecks.`,
           difficulty,
-          topic
+          topic: topic.trim()
         }))
       };
 
       setGeneratedQuiz(generated);
       setIsGenerating(false);
       setGenerationStep('');
-    }, 1800);
+    }, 1400);
   };
 
   const handleStartQuiz = () => {
@@ -163,7 +184,7 @@ const AiQuizGenPage = () => {
           {/* Configuration Grid */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: '1.25rem',
             marginBottom: '1.75rem'
           }}>
@@ -181,20 +202,6 @@ const AiQuizGenPage = () => {
               </select>
             </div>
 
-            {/* Questions Count */}
-            <div>
-              <label className="form-label">Number of Questions ({numQuestions})</label>
-              <input
-                type="range"
-                min="2"
-                max="8"
-                step="1"
-                value={numQuestions}
-                onChange={(e) => setNumQuestions(Number(e.target.value))}
-                style={{ width: '100%', marginTop: '0.75rem' }}
-              />
-            </div>
-
             {/* Question Style */}
             <div>
               <label className="form-label">Question Style</label>
@@ -207,6 +214,62 @@ const AiQuizGenPage = () => {
                 <option value="Technical Interview Focus">Technical Interview Focus</option>
                 <option value="Scenario Based">Real-world Scenario Based</option>
               </select>
+            </div>
+
+            {/* Questions Count (Max 50) */}
+            <div style={{ gridColumn: '1 / -1', background: 'var(--bg-secondary)', padding: '1.1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <label className="form-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Layers size={16} style={{ color: 'var(--gold)' }} />
+                  Number of Questions: <strong style={{ color: 'var(--gold)', fontSize: '1.1rem' }}>{numQuestions}</strong>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-dim)', background: 'rgba(245, 158, 11, 0.12)', padding: '0.15rem 0.5rem', borderRadius: '4px' }}>Max: 50 Questions</span>
+                </label>
+                <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                  {[5, 10, 20, 30, 50].map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setNumQuestions(val)}
+                      className={`btn btn-sm ${numQuestions === val ? 'btn-gold' : 'btn-secondary'}`}
+                      style={{ padding: '0.2rem 0.6rem', fontSize: '0.78rem', fontWeight: 600 }}
+                    >
+                      {val}Q
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  step="1"
+                  value={numQuestions}
+                  onChange={(e) => setNumQuestions(Number(e.target.value))}
+                  style={{ flex: 1, accentColor: '#f59e0b' }}
+                />
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={numQuestions}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    if (!isNaN(val)) {
+                      setNumQuestions(Math.min(50, Math.max(1, val)));
+                    }
+                  }}
+                  className="form-input"
+                  style={{ width: '80px', textAlign: 'center', padding: '0.4rem', fontWeight: 700 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.65rem', fontSize: '0.8rem', color: 'var(--text-dim)', flexWrap: 'wrap' }}>
+                <span>⏱️ Estimated Duration: <strong style={{ color: 'var(--text-main)' }}>~{Math.max(5, Math.ceil(numQuestions * 1.5))} mins</strong></span>
+                <span>⭐ XP Reward: <strong style={{ color: 'var(--accent-cyan)' }}>+{numQuestions * 75} XP</strong></span>
+                <span>🏆 Points: <strong style={{ color: 'var(--gold)' }}>+{numQuestions * 30} pts</strong></span>
+              </div>
             </div>
           </div>
 

@@ -135,11 +135,13 @@ export const validateAiGen = (req, res, next) => {
     errors.push({ field: 'difficulty', message: `Difficulty must be one of: ${validDifficulties.join(', ')}` });
   }
 
-  const qCount = parseInt(numQuestions, 10);
-  if (isNaN(qCount) || qCount < 3 || qCount > 15) {
-    errors.push({ field: 'numQuestions', message: 'numQuestions must be an integer between 3 and 15' });
+  const countInput = numQuestions !== undefined ? numQuestions : (req.body.questionCount !== undefined ? req.body.questionCount : 5);
+  const qCount = parseInt(countInput, 10);
+  if (isNaN(qCount) || qCount < 1 || qCount > 50) {
+    errors.push({ field: 'numQuestions', message: 'numQuestions must be an integer between 1 and 50' });
   } else {
     req.body.numQuestions = qCount;
+    req.body.questionCount = qCount;
   }
 
   if (errors.length > 0) {
@@ -182,18 +184,23 @@ export const validateQuizCreate = (req, res, next) => {
     errors.push({ field: 'timeLimitMinutes', message: 'timeLimitMinutes must be between 1 and 180' });
   }
 
-  if (Array.isArray(questions) && questions.length > 0) {
-    questions.forEach((q, idx) => {
-      if (!q.questionText || typeof q.questionText !== 'string' || !q.questionText.trim()) {
-        errors.push({ field: `questions[${idx}].questionText`, message: 'Question text is required' });
-      }
-      if (!Array.isArray(q.options) || q.options.length !== 4) {
-        errors.push({ field: `questions[${idx}].options`, message: 'Each question must have exactly 4 options' });
-      }
-      if (typeof q.correctAnswer !== 'number' || q.correctAnswer < 0 || q.correctAnswer > 3) {
-        errors.push({ field: `questions[${idx}].correctAnswer`, message: 'correctAnswer must be an index between 0 and 3' });
-      }
-    });
+  if (Array.isArray(questions)) {
+    if (questions.length > 50) {
+      errors.push({ field: 'questions', message: 'A quiz can have a maximum of 50 questions' });
+    }
+    if (questions.length > 0) {
+      questions.forEach((q, idx) => {
+        if (!q.questionText || typeof q.questionText !== 'string' || !q.questionText.trim()) {
+          errors.push({ field: `questions[${idx}].questionText`, message: 'Question text is required' });
+        }
+        if (!Array.isArray(q.options) || q.options.length !== 4) {
+          errors.push({ field: `questions[${idx}].options`, message: 'Each question must have exactly 4 options' });
+        }
+        if (typeof q.correctAnswer !== 'number' || q.correctAnswer < 0 || q.correctAnswer > 3) {
+          errors.push({ field: `questions[${idx}].correctAnswer`, message: 'correctAnswer must be an index between 0 and 3' });
+        }
+      });
+    }
   }
 
   if (errors.length > 0) {

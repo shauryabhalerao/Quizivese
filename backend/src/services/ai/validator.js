@@ -71,7 +71,7 @@ export const validateAiQuiz = (quizData, requestedTopic, requestedDifficulty) =>
     };
   });
 
-  const timeLimitMinutes = Math.min(Math.max(5, validatedQuestions.length * 2), 60);
+  const timeLimitMinutes = Math.min(Math.max(5, validatedQuestions.length * 2), 120);
   const xpReward = validatedQuestions.length * 75;
   const pointsReward = validatedQuestions.length * 30;
 
