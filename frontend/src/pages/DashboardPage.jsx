@@ -16,7 +16,9 @@ import {
   CheckCircle2, 
   Clock, 
   Award,
-  Sparkles
+  Sparkles,
+  Target,
+  BarChart3
 } from 'lucide-react';
 
 const DashboardPage = () => {
@@ -141,6 +143,124 @@ const DashboardPage = () => {
           subtext="Top 5% of students"
           accentColor="cyan"
         />
+      </div>
+
+      {/* Category Mastery Progress & Weak Areas Diagnostics Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: '1.5rem',
+        marginBottom: '2.5rem'
+      }}>
+        {/* Category Progress Bars */}
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BarChart3 size={20} color="#818cf8" />
+              <h2 style={{ fontSize: '1.25rem' }}>Category Mastery</h2>
+            </div>
+            <span className="badge badge-indigo">5 Active Tracks</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+            {[
+              { category: "Web Development", mastery: 91, color: "#3b82f6" },
+              { category: "Programming", mastery: 82, color: "#6366f1" },
+              { category: "Aptitude", mastery: 74, color: "#f59e0b" },
+              { category: "SQL & Databases", mastery: 68, color: "#14b8a6" },
+              { category: "Artificial Intelligence", mastery: 55, color: "#ec4899" }
+            ].map(cat => (
+              <div key={cat.category}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.35rem' }}>
+                  <span style={{ fontWeight: 600 }}>{cat.category}</span>
+                  <span style={{ fontWeight: 700, color: cat.mastery >= 75 ? '#34d399' : cat.mastery >= 60 ? '#fbbf24' : '#f87171' }}>
+                    {cat.mastery}% Mastery
+                  </span>
+                </div>
+                <div className="progress-track" style={{ height: 8, margin: 0 }}>
+                  <div 
+                    className="progress-fill" 
+                    style={{ width: `${cat.mastery}%`, background: cat.color }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Weak Areas Diagnostics Card */}
+        <div className="card glass-card" style={{
+          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%)',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Target size={20} color="#f87171" />
+                <h2 style={{ fontSize: '1.25rem' }}>Weak Area Diagnostics</h2>
+              </div>
+              <span className="badge badge-hard">Priority Growth</span>
+            </div>
+
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+              AI analysis of your recent quiz attempts shows opportunities to boost your score in these specific sub-topics:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.75rem 1rem',
+                background: 'var(--bg-card)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(239, 68, 68, 0.2)'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>SQL Joins & Aggregations</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>48% accuracy • Avg response 42s</div>
+                </div>
+                <span className="badge badge-hard">48%</span>
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.75rem 1rem',
+                background: 'var(--bg-card)',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid rgba(245, 158, 11, 0.2)'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Dynamic Programming & Trees</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>52% accuracy • Avg response 65s</div>
+                </div>
+                <span className="badge badge-medium">52%</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <Link 
+              to="/ai-quiz?topic=SQL%20Joins%20%26%20Aggregations&mode=weak-practice" 
+              className="btn btn-gold"
+              style={{ flex: 1, justifyContent: 'center', boxShadow: '0 4px 14px rgba(245, 158, 11, 0.3)' }}
+            >
+              <Zap size={16} fill="currentColor" /> Practice Weak Areas
+            </Link>
+            <Link 
+              to="/ai-quiz" 
+              className="btn btn-secondary"
+              style={{ padding: '0.5rem 0.85rem' }}
+            >
+              AI Drill
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Main Grid: Recent Attempts & Badges Showcase */}

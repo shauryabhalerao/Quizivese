@@ -19,6 +19,7 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import AchievementsPage from './pages/AchievementsPage';
 import AiQuizGenPage from './pages/AiQuizGenPage';
 import CreateQuizPage from './pages/CreateQuizPage';
+import LiveQuizPage from './pages/LiveQuizPage';
 import AdminPage from './pages/AdminPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -37,6 +38,7 @@ function App() {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/quizzes" element={<QuizzesPage />} />
                 <Route path="/create-quiz" element={<CreateQuizPage />} />
+                <Route path="/live-quiz" element={<LiveQuizPage />} />
                 <Route path="/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/achievements" element={<AchievementsPage />} />
                 <Route path="/ai-quiz" element={<AiQuizGenPage />} />

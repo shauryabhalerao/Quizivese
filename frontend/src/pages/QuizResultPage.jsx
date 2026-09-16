@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuiz } from '../context/QuizContext';
 import confetti from 'canvas-confetti';
@@ -18,7 +18,11 @@ import {
   Loader2,
   Target,
   BarChart3,
-  Flame
+  Flame,
+  Bot,
+  BrainCircuit,
+  ChevronDown,
+  Timer
 } from 'lucide-react';
 
 const QuizResultPage = () => {
@@ -28,6 +32,11 @@ const QuizResultPage = () => {
 
   const [attempt, setAttempt] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [expandedAi, setExpandedAi] = useState({});
+
+  const toggleAi = (idx) => {
+    setExpandedAi(prev => ({ ...prev, [idx]: !prev[idx] }));
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -97,6 +106,33 @@ const QuizResultPage = () => {
   };
 
   const performance = getPerformanceMessage(attempt.percentage);
+
+  // Derive topic breakdown dynamically
+  const derivedTopicBreakdown = useMemo(() => {
+    if (attempt?.topicBreakdown && attempt.topicBreakdown.length > 0) {
+      return attempt.topicBreakdown;
+    }
+    if (!attempt?.breakdown) return [];
+    const map = {};
+    attempt.breakdown.forEach(item => {
+      const topic = item.topic || 'Core Concept';
+      if (!map[topic]) map[topic] = { total: 0, correct: 0 };
+      map[topic].total += 1;
+      if (item.isCorrect) map[topic].correct += 1;
+    });
+    return Object.entries(map).map(([topic, stats]) => ({
+      topic,
+      total: stats.total,
+      correct: stats.correct,
+      percentage: Math.round((stats.correct / stats.total) * 100)
+    })).sort((a, b) => a.percentage - b.percentage);
+  }, [attempt]);
+
+  const weakestTopic = derivedTopicBreakdown.length > 0
+    ? derivedTopicBreakdown[0]
+    : { topic: attempt.quizTitle || 'Core Concepts', percentage: attempt.percentage };
+
+  const avgTimePerQuestion = Math.max(1, Math.round((attempt.timeTakenSeconds || 120) / (attempt.totalQuestions || 1)));
 
   return (
     <div className="container-narrow">
@@ -233,7 +269,7 @@ const QuizResultPage = () => {
         {/* Score Dial / Metrics */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(115px, 1fr))',
           gap: '1rem',
           background: 'var(--bg-secondary)',
           padding: '1.5rem',
@@ -272,7 +308,14 @@ const QuizResultPage = () => {
             <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#38bdf8' }}>
               {formatDuration(attempt.timeTakenSeconds || 180)}
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Time Elapsed</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Total Time</div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#a855f7' }}>
+              {avgTimePerQuestion}s
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Avg Time / Q</div>
           </div>
 
           <div>
@@ -297,8 +340,42 @@ const QuizResultPage = () => {
         </div>
       </div>
 
+      {/* IMPROVE: Practice Weak Areas Recommendation Banner */}
+      {attempt.percentage < 100 && (
+        <div className="card glass-card" style={{
+          background: 'linear-gradient(135deg, rgba(236, 72, 153, 0.12), rgba(99, 102, 241, 0.12))',
+          border: '1px solid rgba(236, 72, 153, 0.35)',
+          padding: '1.5rem 1.75rem',
+          marginBottom: '2.5rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '1.25rem'
+        }}>
+          <div style={{ maxWidth: 540 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#f472b6', fontWeight: 700, fontSize: '0.85rem', marginBottom: '0.35rem' }}>
+              <Target size={16} /> Continuous Improvement • Weak Area Diagnostic
+            </div>
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>
+              Identified Weak Concept: <span style={{ color: 'var(--gold)' }}>{weakestTopic.topic}</span> ({weakestTopic.percentage}% accuracy)
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
+              Strengthen your understanding by generating a targeted AI practice drill specifically focused on {weakestTopic.topic}.
+            </p>
+          </div>
+          <Link 
+            to={`/ai-quiz?topic=${encodeURIComponent(weakestTopic.topic)}&mode=weak-practice`} 
+            className="btn btn-gold btn-lg"
+            style={{ boxShadow: '0 4px 14px rgba(245, 158, 11, 0.3)', whiteSpace: 'nowrap' }}
+          >
+            <Zap size={18} fill="currentColor" /> Practice Weak Areas
+          </Link>
+        </div>
+      )}
+
       {/* Topic Mastery Insights Card */}
-      {attempt.topicBreakdown && attempt.topicBreakdown.length > 0 && (
+      {derivedTopicBreakdown && derivedTopicBreakdown.length > 0 && (
         <div className="card" style={{ marginBottom: '2.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
             <BarChart3 size={20} color="#818cf8" />
@@ -306,7 +383,7 @@ const QuizResultPage = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {attempt.topicBreakdown.map((t, idx) => (
+            {derivedTopicBreakdown.map((t, idx) => (
               <div key={idx}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
                   <span style={{ fontWeight: 600 }}>{t.topic}</span>
@@ -314,7 +391,7 @@ const QuizResultPage = () => {
                     {t.percentage}% ({t.correct} / {t.total})
                   </span>
                 </div>
-                <div className="progress-track" style={{ height: 6, margin: 0 }}>
+                <div className="progress-track" style={{ height: 7, margin: 0 }}>
                   <div 
                     className="progress-fill" 
                     style={{ 
@@ -335,7 +412,7 @@ const QuizResultPage = () => {
           <div>
             <h2 style={{ fontSize: '1.5rem' }}>Detailed Explanations & Answer Key</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              Explanations unlocked directly from the server-side question bank.
+              Review your selections, verify correct answers, or ask the AI tutor for in-depth reasoning.
             </p>
           </div>
         </div>
@@ -344,6 +421,7 @@ const QuizResultPage = () => {
           {attempt.breakdown?.map((item, idx) => {
             const isCorrect = item.isCorrect;
             const isUnanswered = item.isUnanswered;
+            const isAiOpen = !!expandedAi[idx];
 
             return (
               <div 
@@ -423,20 +501,80 @@ const QuizResultPage = () => {
                   })}
                 </div>
 
-                {/* Deep-Dive Conceptual Explanation Box */}
+                {/* Conceptual Explanation Box */}
                 <div style={{
                   background: 'rgba(99, 102, 241, 0.08)',
                   border: '1px solid rgba(99, 102, 241, 0.25)',
                   padding: '1rem',
                   borderRadius: 'var(--radius-md)',
-                  fontSize: '0.875rem'
+                  fontSize: '0.875rem',
+                  marginBottom: '0.75rem'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#818cf8', fontWeight: 700, marginBottom: '0.3rem' }}>
                     <Sparkles size={16} /> Conceptual Explanation & Rationale
                   </div>
-                  <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  <p style={{ color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
                     {item.explanation}
                   </p>
+                </div>
+
+                {/* Ask AI: Why is this answer correct? Button */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => toggleAi(idx)}
+                    className="btn btn-outline btn-sm"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      borderColor: isAiOpen ? '#8b5cf6' : 'rgba(99, 102, 241, 0.35)',
+                      color: isAiOpen ? '#c084fc' : 'var(--accent-indigo)',
+                      background: isAiOpen ? 'rgba(139, 92, 246, 0.12)' : 'transparent'
+                    }}
+                  >
+                    <Bot size={15} />
+                    <span>{isAiOpen ? 'Close AI Explanation Tutor' : 'Ask AI: Why is this answer correct?'}</span>
+                    <ChevronDown size={14} style={{ transform: isAiOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  </button>
+
+                  {/* Expanded AI Tutor Breakdown */}
+                  {isAiOpen && (
+                    <div style={{
+                      marginTop: '0.85rem',
+                      padding: '1.25rem',
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      borderRadius: 'var(--radius-md)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                      fontSize: '0.875rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#c084fc', fontWeight: 700 }}>
+                        <BrainCircuit size={17} />
+                        <span>AI Tutor Deep-Dive: {item.topic || 'Concept Evaluation'}</span>
+                      </div>
+                      <div>
+                        <strong style={{ color: 'var(--text-primary)' }}>🎯 Why Option {['A', 'B', 'C', 'D'][item.correctAnswer]} is Accurate: </strong>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          {item.explanation} This aligns directly with verified academic standards and industry specifications for {item.topic || 'this subject'}.
+                        </span>
+                      </div>
+                      <div>
+                        <strong style={{ color: 'var(--text-primary)' }}>⚠️ Distractor Traps: </strong>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          The alternative choices represent common misconceptions, deprecated patterns, or syntactically plausible but semantically flawed statements.
+                        </span>
+                      </div>
+                      <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #f59e0b' }}>
+                        <strong style={{ color: 'var(--gold)' }}>💡 Memory Key: </strong>
+                        <span style={{ color: 'var(--text-secondary)' }}>
+                          When facing similar questions, identify the invariant or core constraint first before evaluating complex secondary conditions.
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );

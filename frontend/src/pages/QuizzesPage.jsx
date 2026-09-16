@@ -1,14 +1,23 @@
-import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuiz } from '../context/QuizContext';
 import QuizCard from '../components/QuizCard';
 import { Search, Filter, Sparkles, HelpCircle, Layers, PlusCircle } from 'lucide-react';
 
 const QuizzesPage = () => {
   const { quizzes } = useQuiz();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const categoryParam = searchParams.get('category');
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState(categoryParam || 'All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
+
+  useEffect(() => {
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+    }
+  }, [categoryParam]);
 
   // Derive unique categories
   const categories = useMemo(() => {

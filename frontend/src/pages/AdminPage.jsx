@@ -31,9 +31,10 @@ const AdminPage = () => {
   const { quizzes, attempts, addQuiz, updateQuiz, deleteQuiz, toggleQuizStatus } = useQuiz();
   const { currentUser } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('quizzes'); // quizzes | results | users
+  const [activeTab, setActiveTab] = useState('quizzes'); // quizzes | results | users | live
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedQuizQuestions, setSelectedQuizQuestions] = useState(null);
+  const [quizToDelete, setQuizToDelete] = useState(null);
 
   // Admin Data State
   const [stats, setStats] = useState({
@@ -296,6 +297,13 @@ const AdminPage = () => {
         >
           User Role Management ({usersList.length})
         </button>
+        <button
+          onClick={() => setActiveTab('live')}
+          className={`btn btn-sm ${activeTab === 'live' ? 'btn-primary' : 'btn-ghost'}`}
+          style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0, color: '#fbbf24' }}
+        >
+          Live Arenas & Rooms
+        </button>
       </div>
 
       {/* Tab 1: Quiz Management */}
@@ -354,12 +362,7 @@ const AdminPage = () => {
                           <Eye size={15} />
                         </button>
                         <button
-                          onClick={async () => {
-                            if (window.confirm(`Delete "${quiz.title}" permanently?`)) {
-                              await deleteQuiz(quiz.id);
-                              showToast(`Deleted "${quiz.title}"`);
-                            }
-                          }}
+                          onClick={() => setQuizToDelete(quiz)}
                           className="btn btn-danger btn-sm"
                           title="Delete quiz"
                           style={{ padding: '0.35rem 0.65rem' }}
@@ -519,6 +522,66 @@ const AdminPage = () => {
         </div>
       )}
 
+      {/* Tab 4: Live Arenas Management */}
+      {activeTab === 'live' && (
+        <div className="card" style={{ marginBottom: '4rem', padding: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>Live Competitive Quiz Arenas</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Monitor synchronous arena lobbies, live websocket participant pools, and multi-player rooms.
+              </p>
+            </div>
+            <a href="/live-quiz" className="btn btn-gold">
+              <Sparkles size={16} /> Open Arena Host Console
+            </a>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '1.25rem',
+            marginBottom: '2rem'
+          }}>
+            <div style={{ padding: '1.25rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <span className="badge badge-indigo">Arena QVS482</span>
+                <span className="badge badge-easy" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981' }}></span> Live Active
+                </span>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.35rem' }}>Computer Science Arena Battle</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                Host: <strong>Sarah Mitchell (Faculty)</strong> • 5 Rapid Questions
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                <span>Participants: <strong>104 / 150</strong></span>
+                <span>Avg Latency: <strong>14ms</strong></span>
+              </div>
+            </div>
+
+            <div style={{ padding: '1.25rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <span className="badge badge-purple">Arena QVS912</span>
+                <span className="badge badge-medium">Lobby Staging</span>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.35rem' }}>Algorithms & Complexity Sprint</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                Host: <strong>Elena Rov</strong> • 15s Synchronized Timer
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                <span>Participants: <strong>48 / 100</strong></span>
+                <span>Avg Latency: <strong>18ms</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: '1rem', background: 'rgba(99, 102, 241, 0.08)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(99, 102, 241, 0.25)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <strong>💡 Capacity Note:</strong> The platform supports 100+ concurrent competitors per arena room with synchronized countdowns and dynamic live leaderboard recalculation.
+          </div>
+        </div>
+      )}
+
       {/* Modal: Create Quiz */}
       <Modal
         isOpen={isCreateModalOpen}
@@ -658,6 +721,44 @@ const AdminPage = () => {
           </div>
         </Modal>
       )}
+
+      {/* Modal: Confirm Delete Quiz */}
+      <Modal
+        isOpen={!!quizToDelete}
+        onClose={() => setQuizToDelete(null)}
+        title="Confirm Deletion"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setQuizToDelete(null)}
+              className="btn btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (quizToDelete) {
+                  await deleteQuiz(quizToDelete.id);
+                  showToast(`Permanently deleted "${quizToDelete.title}"`);
+                  setQuizToDelete(null);
+                }
+              }}
+              className="btn btn-danger"
+            >
+              <Trash2 size={16} /> Delete Quiz
+            </button>
+          </>
+        }
+      >
+        <div style={{ padding: '0.5rem 0' }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5, margin: 0 }}>
+            Are you sure you want to permanently delete the quiz <strong>"{quizToDelete?.title}"</strong>? 
+            This will remove all associated question items and cannot be undone.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -7,40 +7,32 @@ export const initialQuizzes = [
   {
     id: "quiz-web-dev-101",
     title: "Web Development Fundamentals",
-    description: "Test your mastery over modern HTML5 semantic markup, CSS3 layouts (Flexbox & Grid), and modern JavaScript ES6+ features.",
-    category: "Computer Science",
+    description: "Master modern HTML5 semantics, CSS Flexbox/Grid, responsive UI paradigms, and modern ES6+ JavaScript.",
+    category: "Web Development",
     difficulty: "Easy",
     timeLimitMinutes: 10,
-    xpReward: 250,
-    pointsReward: 100,
+    xpReward: 300,
+    pointsReward: 120,
     isActive: true,
+    isFeatured: true,
+    isPopular: true,
     totalAttempts: 342,
     questions: [
       {
         id: "q1",
         questionText: "Which HTML5 semantic element is best suited to encapsulate an independent, self-contained piece of content?",
-        options: [
-          "<div>",
-          "<article>",
-          "<section>",
-          "<aside>"
-        ],
-        correctAnswer: 1, // <article>
-        explanation: "The <article> tag specifies independent, self-contained content that can be distributed independently, such as a forum post, news article, or blog entry.",
+        options: ["<div>", "<article>", "<section>", "<aside>"],
+        correctAnswer: 1,
+        explanation: "The <article> tag specifies independent, self-contained content that can be distributed independently, such as a forum post or news article.",
         difficulty: "Easy",
         topic: "HTML5"
       },
       {
         id: "q2",
         questionText: "In CSS Flexbox, which property aligns flex items along the cross axis inside the flex container?",
-        options: [
-          "justify-content",
-          "align-items",
-          "flex-direction",
-          "align-content"
-        ],
-        correctAnswer: 1, // align-items
-        explanation: "While 'justify-content' aligns items along the main axis, 'align-items' controls alignment along the perpendicular cross axis.",
+        options: ["justify-content", "align-items", "flex-direction", "align-content"],
+        correctAnswer: 1,
+        explanation: "While 'justify-content' aligns items along the main axis, 'align-items' controls alignment along the cross axis.",
         difficulty: "Easy",
         topic: "CSS3"
       },
@@ -61,26 +53,16 @@ export const initialQuizzes = [
       {
         id: "q4",
         questionText: "Which HTTP status code signifies that the requested resource was not found on the server?",
-        options: [
-          "401 Unauthorized",
-          "403 Forbidden",
-          "404 Not Found",
-          "500 Internal Server Error"
-        ],
+        options: ["401 Unauthorized", "403 Forbidden", "404 Not Found", "500 Internal Server Error"],
         correctAnswer: 2,
-        explanation: "HTTP 404 indicates that the server cannot locate the requested resource, typically when a URL is mistyped or removed.",
+        explanation: "HTTP 404 indicates that the server cannot locate the requested resource.",
         difficulty: "Easy",
         topic: "HTTP Protocols"
       },
       {
         id: "q5",
-        questionText: "Which JavaScript method returns a new array populated with the results of calling a provided function on every element?",
-        options: [
-          "Array.prototype.filter()",
-          "Array.prototype.forEach()",
-          "Array.prototype.map()",
-          "Array.prototype.reduce()"
-        ],
+        questionText: "Which JavaScript method returns a new array populated with the results of calling a provided callback on every element?",
+        options: ["Array.prototype.filter()", "Array.prototype.forEach()", "Array.prototype.map()", "Array.prototype.reduce()"],
         correctAnswer: 2,
         explanation: "map() executes a callback for each element and builds a new array of matching length containing the callback return values.",
         difficulty: "Easy",
@@ -89,72 +71,210 @@ export const initialQuizzes = [
     ]
   },
   {
-    id: "quiz-python-ds",
-    title: "Python Data Structures & Algorithms",
-    description: "Challenge your algorithmic thinking with time complexity, Python built-in structures, and recursion.",
-    category: "Algorithms",
+    id: "quiz-programming-core",
+    title: "Programming Core & OOP Concepts",
+    description: "Deep dive into object-oriented principles, polymorphism, memory paradigms, and functional patterns in modern languages.",
+    category: "Programming",
     difficulty: "Medium",
     timeLimitMinutes: 12,
-    xpReward: 400,
-    pointsReward: 180,
+    xpReward: 420,
+    pointsReward: 160,
     isActive: true,
-    totalAttempts: 189,
+    isPopular: true,
+    totalAttempts: 275,
     questions: [
       {
-        id: "py1",
-        questionText: "What is the average time complexity for searching a key in a standard Python dictionary (hash map)?",
+        id: "pr1",
+        questionText: "Which OOP principle allows a single interface to represent different underlying forms (data types or classes)?",
+        options: ["Encapsulation", "Polymorphism", "Abstraction", "Inheritance"],
+        correctAnswer: 1,
+        explanation: "Polymorphism allows methods or operators to perform different tasks based on the object invoking them.",
+        difficulty: "Medium",
+        topic: "OOP Fundamentals"
+      },
+      {
+        id: "pr2",
+        questionText: "In memory management, where are local variables and function call frames allocated during program execution?",
+        options: ["Heap", "Call Stack", "Static Segment", "Register File"],
+        correctAnswer: 1,
+        explanation: "The Stack memory stores active stack frames containing local variables, return pointers, and function invocation states in LIFO order.",
+        difficulty: "Medium",
+        topic: "Memory Management"
+      },
+      {
+        id: "pr3",
+        questionText: "What distinguishes a pure function in functional programming paradigms?",
         options: [
-          "O(n)",
-          "O(log n)",
-          "O(1)",
-          "O(n log n)"
+          "It must use asynchronous callbacks",
+          "It always returns undefined unless explicitly returned",
+          "Given the same arguments, it always returns the same output with zero side effects",
+          "It mutates global variables to conserve memory"
         ],
         correctAnswer: 2,
-        explanation: "Python dictionaries use hash tables internally, providing O(1) average time complexity for lookups, insertions, and deletions.",
+        explanation: "Pure functions produce deterministic output solely determined by input parameters without altering external system state.",
         difficulty: "Medium",
-        topic: "Data Structures"
+        topic: "Functional Programming"
+      }
+    ]
+  },
+  {
+    id: "quiz-dsa-mastery",
+    title: "Data Structures & Algorithmic Thinking",
+    description: "Challenge yourself with time complexities, binary search trees, hash table collisions, and graph traversal algorithms.",
+    category: "DSA",
+    difficulty: "Hard",
+    timeLimitMinutes: 15,
+    xpReward: 550,
+    pointsReward: 220,
+    isActive: true,
+    isFeatured: true,
+    isPopular: true,
+    totalAttempts: 412,
+    questions: [
+      {
+        id: "dsa1",
+        questionText: "What is the average time complexity of searching for a key in a well-balanced Hash Table?",
+        options: ["O(n)", "O(log n)", "O(1)", "O(n log n)"],
+        correctAnswer: 2,
+        explanation: "Under uniform hashing, Hash Tables provide constant O(1) average time complexity for lookups, insertions, and deletions.",
+        difficulty: "Medium",
+        topic: "Hash Tables"
       },
       {
-        id: "py2",
-        questionText: "Which of the following Python data types is immutable?",
-        options: [
-          "list",
-          "dict",
-          "set",
-          "tuple"
-        ],
-        correctAnswer: 3,
-        explanation: "Tuples are immutable sequences in Python; once created, their elements cannot be changed, added, or removed.",
-        difficulty: "Medium",
-        topic: "Python Core"
-      },
-      {
-        id: "py3",
-        questionText: "What will `[x**2 for x in range(5) if x % 2 == 0]` evaluate to?",
-        options: [
-          "[0, 4, 16]",
-          "[1, 9]",
-          "[0, 1, 4, 9, 16]",
-          "[4, 16]"
-        ],
-        correctAnswer: 0,
-        explanation: "range(5) gives 0, 1, 2, 3, 4. Even numbers are 0, 2, 4. Their squares are 0, 4, and 16.",
-        difficulty: "Medium",
-        topic: "List Comprehensions"
-      },
-      {
-        id: "py4",
-        questionText: "In Big-O notation, which asymptotic bound best describes the worst-case time complexity of Merge Sort?",
-        options: [
-          "O(n^2)",
-          "O(n log n)",
-          "O(n)",
-          "O(log n)"
-        ],
+        id: "dsa2",
+        questionText: "Which graph traversal algorithm uses a Queue (FIFO) and explores neighbors layer-by-layer?",
+        options: ["Depth First Search (DFS)", "Breadth First Search (BFS)", "Dijkstra's with Stack", "Bellman-Ford"],
         correctAnswer: 1,
-        explanation: "Merge Sort consistently divides the array into halves (log n levels) and merges them in O(n) time at each level, ensuring O(n log n) even in the worst case.",
+        explanation: "BFS systematically visits all vertices at current depth before proceeding deeper, using a FIFO queue.",
         difficulty: "Medium",
+        topic: "Graph Traversal"
+      },
+      {
+        id: "dsa3",
+        questionText: "What is the worst-case time complexity of QuickSort when bad pivot selection occurs?",
+        options: ["O(n log n)", "O(n)", "O(n^2)", "O(2^n)"],
+        correctAnswer: 2,
+        explanation: "When partitions are maximally unbalanced (e.g. smallest/largest element consistently chosen), QuickSort degrades to O(n^2).",
+        difficulty: "Hard",
         topic: "Sorting Algorithms"
+      }
+    ]
+  },
+  {
+    id: "quiz-aptitude-quant",
+    title: "Quantitative Aptitude & Logical Reasoning",
+    description: "Sharpen your analytical problem solving with probability, percentages, speed-distance-time, and logic puzzles.",
+    category: "Aptitude",
+    difficulty: "Medium",
+    timeLimitMinutes: 10,
+    xpReward: 350,
+    pointsReward: 140,
+    isActive: true,
+    isPopular: true,
+    totalAttempts: 520,
+    questions: [
+      {
+        id: "apt1",
+        questionText: "A train running at 72 km/h crosses a 200-meter platform in 20 seconds. What is the length of the train?",
+        options: ["180 meters", "200 meters", "220 meters", "240 meters"],
+        correctAnswer: 1,
+        explanation: "Speed = 72 * (5/18) = 20 m/s. Total distance in 20s = 20 * 20 = 400m. Train length = 400 - 200 = 200 meters.",
+        difficulty: "Medium",
+        topic: "Speed, Distance & Time"
+      },
+      {
+        id: "apt2",
+        questionText: "If two unbiased fair dice are rolled simultaneously, what is the probability that the sum of the numbers is 7?",
+        options: ["1/12", "1/6", "5/36", "7/36"],
+        correctAnswer: 1,
+        explanation: "Combinations summing to 7 are: (1,6), (2,5), (3,4), (4,3), (5,2), (6,1) = 6 combinations. Total outcomes = 36. Probability = 6/36 = 1/6.",
+        difficulty: "Medium",
+        topic: "Probability"
+      },
+      {
+        id: "apt3",
+        questionText: "Complete the series: 3, 7, 15, 31, 63, ___?",
+        options: ["95", "127", "128", "131"],
+        correctAnswer: 1,
+        explanation: "The pattern is (2 * x) + 1: (3*2)+1=7, (7*2)+1=15, (15*2)+1=31, (31*2)+1=63, (63*2)+1 = 127.",
+        difficulty: "Easy",
+        topic: "Number Series"
+      }
+    ]
+  },
+  {
+    id: "quiz-general-knowledge",
+    title: "Daily World Trivia & General Knowledge",
+    description: "Global geography, monumental historical events, scientific milestones, and world culture.",
+    category: "General Knowledge",
+    difficulty: "Easy",
+    timeLimitMinutes: 8,
+    xpReward: 320,
+    pointsReward: 130,
+    isActive: true,
+    isDaily: true,
+    isFeatured: true,
+    totalAttempts: 680,
+    questions: [
+      {
+        id: "gk1",
+        questionText: "Which is the largest ocean on Earth covering more than 30% of the planet's surface?",
+        options: ["Atlantic Ocean", "Indian Ocean", "Pacific Ocean", "Arctic Ocean"],
+        correctAnswer: 2,
+        explanation: "The Pacific Ocean is the largest and deepest of Earth's oceanic divisions, spanning approximately 165 million square kilometers.",
+        difficulty: "Easy",
+        topic: "Geography"
+      },
+      {
+        id: "gk2",
+        questionText: "Who is credited with inventing the World Wide Web at CERN in 1989?",
+        options: ["Alan Turing", "Tim Berners-Lee", "Vint Cerf", "Steve Wozniak"],
+        correctAnswer: 1,
+        explanation: "Sir Tim Berners-Lee invented the World Wide Web in 1989 while working as a computer scientist at CERN.",
+        difficulty: "Easy",
+        topic: "Inventions & Tech History"
+      },
+      {
+        id: "gk3",
+        questionText: "Which planet in our solar system has the highest number of confirmed moons as of recent astronomical surveys?",
+        options: ["Jupiter", "Saturn", "Uranus", "Neptune"],
+        correctAnswer: 1,
+        explanation: "Saturn holds the official lead with over 140 confirmed natural satellites recognized by the IAU.",
+        difficulty: "Easy",
+        topic: "Solar System"
+      }
+    ]
+  },
+  {
+    id: "quiz-science-physics-chem",
+    title: "Physics, Chemistry & Space Exploration",
+    description: "Explore atomic structures, thermodynamics, universal gravitation, and interstellar discoveries.",
+    category: "Science",
+    difficulty: "Medium",
+    timeLimitMinutes: 10,
+    xpReward: 380,
+    pointsReward: 150,
+    isActive: true,
+    isPopular: true,
+    totalAttempts: 210,
+    questions: [
+      {
+        id: "sci1",
+        questionText: "What fundamental constant connects the energy of a photon to its electromagnetic frequency (E = h * f)?",
+        options: ["Boltzmann's Constant", "Planck's Constant", "Avogadro's Number", "Universal Gas Constant"],
+        correctAnswer: 1,
+        explanation: "Planck's constant (h ≈ 6.626 × 10^-34 J·s) quantizes the proportional relationship between photon energy and wave frequency.",
+        difficulty: "Medium",
+        topic: "Quantum Physics"
+      },
+      {
+        id: "sci2",
+        questionText: "Which element has the highest electrical conductivity of all metals at room temperature?",
+        options: ["Copper", "Gold", "Silver", "Aluminum"],
+        correctAnswer: 2,
+        explanation: "Silver possesses the highest electrical conductivity of any element, followed by copper and gold.",
+        difficulty: "Medium",
+        topic: "Chemistry & Materials"
       }
     ]
   },
@@ -162,13 +282,14 @@ export const initialQuizzes = [
     id: "quiz-ai-gen",
     title: "Artificial Intelligence & Neural Networks",
     description: "Explore foundations of machine learning, loss functions, transformers, and deep learning architectures.",
-    category: "AI & ML",
+    category: "Artificial Intelligence",
     difficulty: "Hard",
     timeLimitMinutes: 15,
     xpReward: 600,
-    pointsReward: 300,
+    pointsReward: 250,
     isActive: true,
-    totalAttempts: 124,
+    isFeatured: true,
+    totalAttempts: 310,
     questions: [
       {
         id: "ai1",
@@ -187,12 +308,7 @@ export const initialQuizzes = [
       {
         id: "ai2",
         questionText: "Which activation function is most prone to the 'Vanishing Gradient' problem in very deep neural networks?",
-        options: [
-          "ReLU",
-          "Leaky ReLU",
-          "Sigmoid",
-          "GELU"
-        ],
+        options: ["ReLU", "Leaky ReLU", "Sigmoid", "GELU"],
         correctAnswer: 2,
         explanation: "The derivative of the Sigmoid function caps at 0.25. Multiplying many values < 1 during backpropagation causes gradients to vanish exponentially.",
         difficulty: "Hard",
@@ -201,58 +317,87 @@ export const initialQuizzes = [
       {
         id: "ai3",
         questionText: "In supervised learning, what term describes a model that performs well on training data but poorly on unseen test data?",
-        options: [
-          "Underfitting",
-          "Overfitting",
-          "High Bias",
-          "Regularization"
-        ],
+        options: ["Underfitting", "Overfitting", "High Bias", "Regularization"],
         correctAnswer: 1,
-        explanation: "Overfitting occurs when a model memorizes noise and specific patterns in the training set rather than learning generalizable features.",
+        explanation: "Overfitting occurs when a model memorizes noise in the training set rather than learning generalizable features.",
         difficulty: "Hard",
         topic: "Model Evaluation"
       }
     ]
   },
   {
-    id: "quiz-cloud-devops",
-    title: "Cloud Computing & Docker Architecture",
-    description: "Containerization, microservices, Linux fundamentals, and scalable cloud deployment models.",
-    category: "DevOps",
+    id: "quiz-sql-databases",
+    title: "SQL & Relational Database Mastery",
+    description: "Master table JOINs, aggregations, indexing strategies, transactions (ACID), and schema constraints.",
+    category: "SQL",
     difficulty: "Medium",
-    timeLimitMinutes: 10,
-    xpReward: 350,
-    pointsReward: 160,
+    timeLimitMinutes: 12,
+    xpReward: 420,
+    pointsReward: 170,
     isActive: true,
-    totalAttempts: 95,
+    isFeatured: true,
+    isPopular: true,
+    totalAttempts: 395,
     questions: [
       {
-        id: "d1",
-        questionText: "What is the fundamental difference between a Docker container and a traditional Virtual Machine?",
-        options: [
-          "Containers require their own dedicated hypervisor",
-          "Containers share the host OS kernel, making them lightweight",
-          "Containers cannot run Linux applications on macOS",
-          "VMs do not use operating system images"
-        ],
+        id: "sql1",
+        questionText: "Which SQL JOIN returns all records from the left table, and matching records from the right table, filling nulls if no match?",
+        options: ["INNER JOIN", "LEFT JOIN", "RIGHT JOIN", "CROSS JOIN"],
         correctAnswer: 1,
-        explanation: "Containers virtualize at the OS level and share the host kernel, while VMs virtualize hardware and run an entire guest operating system.",
-        difficulty: "Medium",
-        topic: "Containers"
+        explanation: "A LEFT OUTER JOIN preserves every row from the left table regardless of whether the right table satisfies the join condition.",
+        difficulty: "Easy",
+        topic: "SQL Joins"
       },
       {
-        id: "d2",
-        questionText: "Which Dockerfile instruction specifies the default command executed when running the container?",
-        options: [
-          "RUN",
-          "COPY",
-          "CMD",
-          "EXPOSE"
-        ],
-        correctAnswer: 2,
-        explanation: "CMD provides default arguments for an executing container, whereas RUN executes commands to build layers during image creation.",
+        id: "sql2",
+        questionText: "In SQL, what clause is strictly required to filter rows based on aggregate function results (e.g. COUNT(*) > 5)?",
+        options: ["WHERE", "HAVING", "GROUP BY", "ORDER BY"],
+        correctAnswer: 1,
+        explanation: "The WHERE clause filters before aggregation, while the HAVING clause filters groups after aggregate calculations.",
         difficulty: "Medium",
-        topic: "Docker"
+        topic: "Aggregations"
+      },
+      {
+        id: "sql3",
+        questionText: "What does the 'I' in the ACID database transaction properties acronym stand for?",
+        options: ["Integrity", "Isolation", "Immutability", "Indexing"],
+        correctAnswer: 1,
+        explanation: "Isolation ensures concurrent transactions execute without interference, preserving consistency as if executed serially.",
+        difficulty: "Medium",
+        topic: "Transactions & ACID"
+      }
+    ]
+  },
+  {
+    id: "quiz-cs-core-os",
+    title: "Computer Science: OS & Networks",
+    description: "Master process scheduling, deadlocks, virtual memory, TCP/IP stack layers, and networking protocols.",
+    category: "Computer Science",
+    difficulty: "Hard",
+    timeLimitMinutes: 15,
+    xpReward: 500,
+    pointsReward: 200,
+    isActive: true,
+    isPopular: true,
+    totalAttempts: 290,
+    questions: [
+      {
+        id: "cs1",
+        questionText: "Which condition is NOT one of Coffman's four necessary conditions for a deadlock to occur in an operating system?",
+        options: ["Mutual Exclusion", "Hold and Wait", "Preemption Allowed", "Circular Wait"],
+        correctAnswer: 2,
+        explanation: "No preemption is the required condition for deadlocks. Allowing preemption breaks deadlocks.",
+        difficulty: "Hard",
+        topic: "Operating Systems"
+      },
+      {
+        id: "cs2",
+        questionText: "At which layer of the OSI model does the TCP (Transmission Control Protocol) operate?",
+        options: ["Network Layer (Layer 3)", "Transport Layer (Layer 4)", "Session Layer (Layer 5)", "Data Link Layer (Layer 2)"],
+        correctAnswer: 1,
+        explanation: "TCP operates at Layer 4 (Transport Layer), providing reliable, ordered end-to-end byte stream delivery.",
+        difficulty: "Medium",
+        topic: "Computer Networks"
       }
     ]
   }

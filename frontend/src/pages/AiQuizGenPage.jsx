@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuiz } from '../context/QuizContext';
 import { api } from '../services/api';
 import { 
@@ -13,7 +13,9 @@ import {
   AlertCircle,
   Play,
   BrainCircuit,
-  ShieldCheck
+  ShieldCheck,
+  FileText,
+  Target
 } from 'lucide-react';
 
 const quickTopics = [
@@ -26,23 +28,44 @@ const quickTopics = [
 
 const AiQuizGenPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const topicParam = searchParams.get('topic') || '';
+  const modeParam = searchParams.get('mode') || '';
+
   const { addQuiz } = useQuiz();
 
-  const [topic, setTopic] = useState('');
-  const [difficulty, setDifficulty] = useState('Medium');
-  const [numQuestions, setNumQuestions] = useState(4);
+  const [activeTab, setActiveTab] = useState('prompt'); // 'prompt' | 'notes'
+  const [topic, setTopic] = useState(topicParam);
+  const [rawNotes, setRawNotes] = useState('');
+  const [difficulty, setDifficulty] = useState(modeParam === 'weak-practice' ? 'Medium' : 'Medium');
+  const [numQuestions, setNumQuestions] = useState(modeParam === 'weak-practice' ? 5 : 4);
   const [questionStyle, setQuestionStyle] = useState('Multiple Choice (Single Answer)');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState('');
   const [generatedQuiz, setGeneratedQuiz] = useState(null);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (topicParam) {
+      setTopic(topicParam);
+    }
+  }, [topicParam]);
+
   const handleGenerate = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!topic.trim()) {
+    const effectiveTopic = activeTab === 'notes'
+      ? (topic.trim() || 'Study Notes Evaluation')
+      : topic.trim();
+
+    if (activeTab === 'prompt' && !effectiveTopic) {
       setError('Please enter a topic or select one of the suggested prompts below');
+      return;
+    }
+
+    if (activeTab === 'notes' && !rawNotes.trim()) {
+      setError('Please paste your study notes, textbook excerpt, or syllabus text below');
       return;
     }
 
@@ -53,9 +76,10 @@ const AiQuizGenPage = () => {
     setGenerationStep('Connecting to AI synthesis engine...');
 
     try {
-      setGenerationStep(`Synthesizing ${count} ${difficulty} questions for "${topic.trim()}"...`);
+      setGenerationStep(`Synthesizing ${count} ${difficulty} questions for "${effectiveTopic}"...`);
       const res = await api.post('/ai/generate', {
-        topic: topic.trim(),
+        topic: effectiveTopic,
+        notes: activeTab === 'notes' ? rawNotes.trim() : undefined,
         difficulty,
         numQuestions: count,
         questionCount: count,
@@ -74,7 +98,7 @@ const AiQuizGenPage = () => {
 
     // Client-side synthesis pipeline (supports up to 50 questions)
     setTimeout(() => {
-      setGenerationStep(`Synthesizing ${count} ${difficulty} questions for "${topic.trim()}"...`);
+      setGenerationStep(`Synthesizing ${count} ${difficulty} questions for "${effectiveTopic}"...`);
     }, 400);
 
     setTimeout(() => {
@@ -83,8 +107,10 @@ const AiQuizGenPage = () => {
 
     setTimeout(() => {
       const generated = {
-        title: `AI: ${topic.trim()}`,
-        description: `Custom AI-synthesized evaluation on "${topic.trim()}" with ${difficulty} difficulty grading.`,
+        title: `AI: ${effectiveTopic}`,
+        description: activeTab === 'notes'
+          ? `Assessment synthesized directly from submitted study notes and syllabus excerpt.`
+          : `Custom AI-synthesized evaluation on "${effectiveTopic}" with ${difficulty} difficulty grading.`,
         category: "AI Generated",
         difficulty,
         timeLimitMinutes: Math.min(Math.max(5, Math.ceil(count * 1.5)), 120),
@@ -92,7 +118,9 @@ const AiQuizGenPage = () => {
         pointsReward: count * 30,
         questions: Array.from({ length: count }, (_, i) => ({
           id: `ai-q-${Date.now()}-${i}`,
-          questionText: `[Question ${i + 1} of ${count}] In the context of ${topic.trim()}, how is requirement #${i + 1} best addressed with optimal performance?`,
+          questionText: activeTab === 'notes'
+            ? `[Notes Concept #${i + 1}] Based on the provided study material on ${effectiveTopic}, which statement reflects the key technical principle?`
+            : `[Question ${i + 1} of ${count}] In the context of ${effectiveTopic}, how is requirement #${i + 1} best addressed with optimal performance?`,
           options: [
             `Utilizing standard sequential lookups without caching`,
             `Leveraging indexed structures and asynchronous batch operations`,
@@ -100,9 +128,9 @@ const AiQuizGenPage = () => {
             `Disabling synchronization primitives in concurrency`
           ],
           correctAnswer: 1, // Strictly 1 correct answer
-          explanation: `In ${topic.trim()}, leveraging indexed structures with asynchronous batch operations provides sub-linear complexity while minimizing system I/O bottlenecks.`,
+          explanation: `In ${effectiveTopic}, leveraging indexed structures with asynchronous batch operations provides sub-linear complexity while minimizing system I/O bottlenecks.`,
           difficulty,
-          topic: topic.trim()
+          topic: effectiveTopic
         }))
       };
 
@@ -144,42 +172,128 @@ const AiQuizGenPage = () => {
         </p>
       </div>
 
+      {/* Weak Area Diagnostic Mode Alert */}
+      {modeParam === 'weak-practice' && topicParam && (
+        <div className="card glass-card" style={{
+          background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(236, 72, 153, 0.12))',
+          border: '1px solid rgba(245, 158, 11, 0.4)',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '2rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem'
+        }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(245, 158, 11, 0.2)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Target size={22} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '1rem' }}>
+              Targeted Weak Area Diagnostic Mode Active
+            </div>
+            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              Synthesizing a targeted practice quiz focusing specifically on <strong>"{topicParam}"</strong> to rapidly build conceptual mastery.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mode Switcher Tabs */}
+      <div style={{
+        display: 'flex',
+        gap: '0.5rem',
+        marginBottom: '1.5rem',
+        background: 'var(--bg-secondary)',
+        padding: '0.4rem',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--border-default)'
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('prompt')}
+          className={`btn btn-sm ${activeTab === 'prompt' ? 'btn-primary' : 'btn-ghost'}`}
+          style={{ flex: 1, justifyContent: 'center', gap: '0.5rem' }}
+        >
+          <BrainCircuit size={16} /> By Topic & Concept Prompt
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('notes')}
+          className={`btn btn-sm ${activeTab === 'notes' ? 'btn-primary' : 'btn-ghost'}`}
+          style={{ flex: 1, justifyContent: 'center', gap: '0.5rem' }}
+        >
+          <FileText size={16} /> From Notes / Syllabus / PDF Text
+        </button>
+      </div>
+
       {/* Generator Form */}
       <div className="card glass-card" style={{ marginBottom: '2.5rem' }}>
         <form onSubmit={handleGenerate}>
-          {/* Topic Input */}
-          <div className="form-group">
-            <label className="form-label" htmlFor="topic">Topic / Subject / Concept</label>
-            <input
-              id="topic"
-              type="text"
-              className="form-input"
-              placeholder="e.g. React 18 Suspense, Kubernetes Ingress, Rust Memory Safety..."
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
-            {error && <div className="form-error"><AlertCircle size={14} /> {error}</div>}
-          </div>
+          {activeTab === 'prompt' ? (
+            <>
+              {/* Topic Input */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="topic">Topic / Subject / Concept</label>
+                <input
+                  id="topic"
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. React 18 Suspense, Kubernetes Ingress, Rust Memory Safety..."
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                />
+                {error && <div className="form-error"><AlertCircle size={14} /> {error}</div>}
+              </div>
 
-          {/* Quick Prompt Pills */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>
-              Suggested Topics:
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {quickTopics.map((item, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setTopic(item)}
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
+              {/* Quick Prompt Pills */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '0.5rem' }}>
+                  Suggested Topics:
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {quickTopics.map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setTopic(item)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Notes Input Mode */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="notes">Paste Lecture Notes / Syllabus / Textbook Text</label>
+                <textarea
+                  id="notes"
+                  rows={6}
+                  className="form-input"
+                  placeholder="Paste raw lecture slides, notes, textbook paragraphs, or curriculum bullet points here... The AI engine will parse the core facts and synthesize a 4-choice assessment."
+                  value={rawNotes}
+                  onChange={(e) => setRawNotes(e.target.value)}
+                  style={{ resize: 'vertical' }}
+                />
+                {error && <div className="form-error"><AlertCircle size={14} /> {error}</div>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="topicLabel">Subject Title / Heading (Optional)</label>
+                <input
+                  id="topicLabel"
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Biology Chapter 4: Photosynthesis"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                />
+              </div>
+            </>
+          )}
 
           {/* Configuration Grid */}
           <div style={{

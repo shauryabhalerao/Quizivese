@@ -33,7 +33,7 @@ const QuizActivePage = () => {
 
   const timerRef = useRef(null);
 
-  // Load quiz asynchronously
+  // Load quiz and restore cached progress if exists
   useEffect(() => {
     let isMounted = true;
     const loadQuiz = async () => {
@@ -42,7 +42,25 @@ const QuizActivePage = () => {
         if (isMounted) {
           if (found) {
             setQuiz(found);
-            setSecondsRemaining((found.timeLimitMinutes || 10) * 60);
+
+            // Restore from localStorage if an active session exists
+            try {
+              const savedSession = localStorage.getItem(`quiziverse_session_${quizId}`);
+              if (savedSession) {
+                const parsed = JSON.parse(savedSession);
+                if (parsed.userAnswers) setUserAnswers(parsed.userAnswers);
+                if (parsed.reviewedFlags) setReviewedFlags(parsed.reviewedFlags);
+                if (parsed.secondsRemaining && parsed.secondsRemaining > 5) {
+                  setSecondsRemaining(parsed.secondsRemaining);
+                } else {
+                  setSecondsRemaining((found.timeLimitMinutes || 10) * 60);
+                }
+              } else {
+                setSecondsRemaining((found.timeLimitMinutes || 10) * 60);
+              }
+            } catch (e) {
+              setSecondsRemaining((found.timeLimitMinutes || 10) * 60);
+            }
           }
           setLoading(false);
         }
@@ -57,6 +75,42 @@ const QuizActivePage = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [quizId]);
+
+  // Persist progress to localStorage on change
+  useEffect(() => {
+    if (!quizId || !quiz) return;
+    try {
+      localStorage.setItem(`quiziverse_session_${quizId}`, JSON.stringify({
+        userAnswers,
+        reviewedFlags,
+        secondsRemaining,
+        savedAt: Date.now()
+      }));
+    } catch (e) {}
+  }, [quizId, quiz, userAnswers, reviewedFlags, secondsRemaining]);
+
+  // Keyboard navigation shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger if modal is open
+      if (isSubmitModalOpen) return;
+
+      if (e.key === 'ArrowRight') {
+        handleNext();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrev();
+      } else if (['1', '2', '3', '4'].includes(e.key)) {
+        const optIdx = parseInt(e.key, 10) - 1;
+        handleSelectOption(optIdx);
+      } else if (['a', 'b', 'c', 'd', 'A', 'B', 'C', 'D'].includes(e.key)) {
+        const map = { a: 0, b: 1, c: 2, d: 3, A: 0, B: 1, C: 2, D: 3 };
+        handleSelectOption(map[e.key]);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex, isSubmitModalOpen, quiz]);
 
   // Countdown timer hook
   useEffect(() => {
@@ -141,6 +195,10 @@ const QuizActivePage = () => {
         timeTakenSeconds: timeSpentSeconds
       });
 
+      try {
+        localStorage.removeItem(`quiziverse_session_${quiz.id}`);
+      } catch (e) {}
+
       setIsSubmitModalOpen(false);
 
       if (attemptResult?.attemptId) {
@@ -149,6 +207,9 @@ const QuizActivePage = () => {
         navigate('/dashboard');
       }
     } catch (err) {
+      try {
+        localStorage.removeItem(`quiziverse_session_${quiz.id}`);
+      } catch (e) {}
       navigate('/dashboard');
     }
   };
@@ -194,9 +255,14 @@ const QuizActivePage = () => {
           {/* Header Bar */}
           <div className="quiz-header-bar">
             <div>
-              <span className="badge badge-indigo" style={{ marginBottom: '0.4rem' }}>
-                {quiz.title}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+                <span className="badge badge-indigo">
+                  {quiz.title}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.12)', padding: '0.15rem 0.5rem', borderRadius: 999, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                  <Check size={12} /> Auto-Saved
+                </span>
+              </div>
               <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                 Question <strong>{currentIndex + 1}</strong> of {totalQuestions} • Topic: <em>{currentQuestion?.topic || quiz.category}</em>
               </div>

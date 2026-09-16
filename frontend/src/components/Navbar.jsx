@@ -92,6 +92,15 @@ const Navbar = () => {
             </NavLink>
           </li>
           <li>
+            <NavLink to="/live-quiz" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ color: '#fbbf24' }}>
+              <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <Zap size={17} fill="currentColor" />
+                <span>Live Arena</span>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', animation: 'pulse 1.5s infinite' }}></span>
+              </span>
+            </NavLink>
+          </li>
+          <li>
             <NavLink to="/create-quiz" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} style={{ color: 'var(--accent-cyan)' }}>
               <PlusCircle size={17} /> Create Quiz
             </NavLink>
@@ -224,6 +233,9 @@ const Navbar = () => {
           </NavLink>
           <NavLink to="/ai-quiz" className="nav-link" onClick={closeMobileMenu}>
             <Bot size={18} /> AI Generator
+          </NavLink>
+          <NavLink to="/live-quiz" className="nav-link" onClick={closeMobileMenu} style={{ color: '#fbbf24' }}>
+            <Zap size={18} fill="currentColor" /> Live Arena
           </NavLink>
           <NavLink to="/create-quiz" className="nav-link" onClick={closeMobileMenu} style={{ color: 'var(--accent-cyan)' }}>
             <PlusCircle size={18} /> Create Quiz
