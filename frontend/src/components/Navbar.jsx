@@ -18,7 +18,8 @@ import {
   UserCircle2,
   Sun,
   Moon,
-  PlusCircle
+  PlusCircle,
+  Zap
 } from 'lucide-react';
 
 const Navbar = () => {
