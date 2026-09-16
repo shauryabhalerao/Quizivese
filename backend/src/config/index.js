@@ -25,11 +25,13 @@ export const config = {
   },
 
   db: {
+    url: process.env.DATABASE_URL || null,
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '',
-    name: process.env.DB_NAME || 'quiziverse_db'
+    name: process.env.DB_NAME || 'quiziverse_db',
+    ssl: process.env.DB_SSL === 'true' || !!process.env.DATABASE_URL
   },
 
   ai: {

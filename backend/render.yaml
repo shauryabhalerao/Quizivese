@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: quiziverse-backend
+    env: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm run db:init && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: CORS_ORIGIN
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: AI_PROVIDER
+        value: gemini
+      - key: AI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: quiziverse-db
+          property: connectionString
+
+databases:
+  - name: quiziverse-db
+    plan: free
+    region: oregon
+    databaseName: quiziverse_db
+    user: quiziverse_user
