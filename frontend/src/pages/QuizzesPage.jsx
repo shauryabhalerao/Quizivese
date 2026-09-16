@@ -20,19 +20,21 @@ const QuizzesPage = () => {
   }, [categoryParam]);
 
   // Derive unique categories
+  const safeQuizzes = Array.isArray(quizzes) ? quizzes : [];
+
   const categories = useMemo(() => {
-    const set = new Set(quizzes.map(q => q.category));
+    const set = new Set(safeQuizzes.map(q => q.category).filter(Boolean));
     return ['All', ...Array.from(set)];
-  }, [quizzes]);
+  }, [safeQuizzes]);
 
   // Filter quizzes
   const filteredQuizzes = useMemo(() => {
-    return quizzes.filter(q => {
-      if (!q.isActive) return false;
+    return safeQuizzes.filter(q => {
+      if (!q || !q.isActive) return false;
 
       const matchesSearch = 
-        q.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        q.description.toLowerCase().includes(searchTerm.toLowerCase());
+        (q.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (q.description || '').toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesCategory = selectedCategory === 'All' || q.category === selectedCategory;
       const matchesDifficulty = selectedDifficulty === 'All' || q.difficulty.toLowerCase() === selectedDifficulty.toLowerCase();

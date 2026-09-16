@@ -105,10 +105,12 @@ const HomePage = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
+  const safeQuizzes = Array.isArray(quizzes) ? quizzes : [];
+
   // Filter featured & popular quizzes
-  const featuredQuizzes = quizzes.filter(q => q.isFeatured && q.isActive).slice(0, 3);
-  const popularQuizzes = quizzes.filter(q => (q.isPopular || !q.isFeatured) && q.isActive).slice(0, 3);
-  const dailyQuiz = quizzes.find(q => q.isDaily && q.isActive) || quizzes[0];
+  const featuredQuizzes = safeQuizzes.filter(q => q && q.isFeatured && q.isActive).slice(0, 3);
+  const popularQuizzes = safeQuizzes.filter(q => q && (q.isPopular || !q.isFeatured) && q.isActive).slice(0, 3);
+  const dailyQuiz = safeQuizzes.find(q => q && q.isDaily && q.isActive) || safeQuizzes[0] || null;
 
   return (
     <div className="container">
@@ -318,7 +320,7 @@ const HomePage = () => {
         }}>
           {categoriesList.map(cat => {
             const Icon = cat.icon;
-            const categoryQuizCount = quizzes.filter(q => q.category === cat.name && q.isActive).length;
+            const categoryQuizCount = safeQuizzes.filter(q => q && q.category === cat.name && q.isActive).length;
 
             return (
               <div 
@@ -386,7 +388,7 @@ const HomePage = () => {
             <h2 style={{ fontSize: '1.9rem' }}>Featured Quizzes in the Galaxy</h2>
           </div>
           <Link to="/quizzes" className="btn btn-outline btn-sm">
-            View All ({quizzes.length}) <ArrowRight size={16} />
+            View All ({safeQuizzes.length}) <ArrowRight size={16} />
           </Link>
         </div>
 

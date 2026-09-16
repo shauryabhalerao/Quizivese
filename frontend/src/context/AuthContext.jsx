@@ -6,17 +6,35 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem('quiziverse_user');
-    return saved ? JSON.parse(saved) : demoUsers.student;
+    try {
+      const saved = localStorage.getItem('quiziverse_user');
+      if (saved && saved !== 'undefined' && saved !== 'null') {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            ...demoUsers.student,
+            ...parsed,
+            name: parsed.name || demoUsers.student.name
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('[AUTH RECOVERY] Resetting corrupted local user cache:', e);
+    }
+    return demoUsers.student;
   });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('quiziverse_user', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('quiziverse_user');
-      api.setToken(null);
+    try {
+      if (currentUser) {
+        localStorage.setItem('quiziverse_user', JSON.stringify(currentUser));
+      } else {
+        localStorage.removeItem('quiziverse_user');
+        api.setToken(null);
+      }
+    } catch (e) {
+      console.warn('[AUTH STORAGE] Could not persist user to localStorage:', e);
     }
   }, [currentUser]);
 

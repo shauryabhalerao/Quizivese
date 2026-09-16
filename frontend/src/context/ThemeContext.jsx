@@ -4,20 +4,27 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('quiziverse_theme');
-    if (savedTheme === 'light' || savedTheme === 'dark') {
-      return savedTheme;
-    }
-    // Respect system preference if no saved choice
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-      return 'light';
+    try {
+      const savedTheme = localStorage.getItem('quiziverse_theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        return savedTheme;
+      }
+      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        return 'light';
+      }
+    } catch (e) {
+      console.warn('[THEME INIT] Safe theme fallback active:', e);
     }
     return 'dark';
   });
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('quiziverse_theme', theme);
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('quiziverse_theme', theme);
+    } catch (e) {
+      console.warn('[THEME PERSIST] Could not write theme to localStorage:', e);
+    }
   }, [theme]);
 
   const toggleTheme = () => {

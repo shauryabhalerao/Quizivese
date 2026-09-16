@@ -162,13 +162,13 @@ const Navbar = () => {
               {/* User Profile Pill */}
               <div className="user-profile-pill">
                 <div className="user-avatar">
-                  {currentUser.name.charAt(0).toUpperCase()}
+                  {currentUser?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
                 <div className="user-meta" style={{ display: 'none', minWidth: 70 }}>
-                  <span className="user-name">{currentUser.name.split(' ')[0]}</span>
+                  <span className="user-name">{(currentUser?.name || currentUser?.email || 'User').split(' ')[0]}</span>
                   <span className="user-points">
                     <Coins size={11} style={{ display: 'inline', marginRight: 2 }} />
-                    {currentUser.points || 0} pts
+                    {currentUser?.points || 0} pts
                   </span>
                 </div>
               </div>
