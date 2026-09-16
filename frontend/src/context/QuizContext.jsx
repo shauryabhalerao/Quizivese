@@ -50,6 +50,7 @@ export const QuizProvider = ({ children }) => {
   };
 
   const getQuizById = async (quizId) => {
+    if (!quizId || quizId === 'undefined') return null;
     try {
       const res = await api.get(`/quizzes/${quizId}`);
       if (res?.data?.quiz) {
@@ -62,6 +63,7 @@ export const QuizProvider = ({ children }) => {
   };
 
   const getAttemptById = async (attemptId) => {
+    if (!attemptId || attemptId === 'undefined') return null;
     try {
       const res = await api.get(`/attempts/${attemptId}`);
       if (res?.data?.attempt) {
