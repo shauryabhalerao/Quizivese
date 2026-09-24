@@ -35,7 +35,7 @@ app.use(cors({
     if (!origin) return callback(null, true);
 
     const allowed = [...config.cors.allowedOrigins, ...localOrigins];
-    if (allowed.includes(origin) || config.cors.allowedOrigins.includes('*')) {
+    if (allowed.includes(origin) || config.cors.allowedOrigins.includes('*') || origin.endsWith('.vercel.app')) {
       return callback(null, true);
     }
     
