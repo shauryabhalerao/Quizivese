@@ -271,17 +271,28 @@ export const forgotPassword = async (req, res, next) => {
     const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
     const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes expiry
 
-    // Save tokenHash, resetCode & expiry to DB / memory store
+    // Save tokenHash, resetCode & expiry to DB and update memory store
     try {
       await pool.query(
         'UPDATE users SET reset_password_token = $1, reset_password_code = $2, reset_password_expires = $3 WHERE id = $4',
         [tokenHash, resetCode, expiresAt, user.id]
       );
     } catch (dbErr) {
-      user.reset_password_token = tokenHash;
-      user.raw_reset_token = resetToken;
-      user.reset_password_code = resetCode;
-      user.reset_password_expires = expiresAt;
+      console.warn('[DB NOTICE] Failed to update reset token in DB, using memory sync:', dbErr.message);
+    }
+
+    // Keep user in memory store fully synced
+    user.reset_password_token = tokenHash;
+    user.raw_reset_token = resetToken;
+    user.reset_password_code = resetCode;
+    user.reset_password_expires = expiresAt;
+
+    const mockMatch = mockUsers.find(u => u.email === normalizedEmail || u.id === user.id);
+    if (mockMatch) {
+      mockMatch.reset_password_token = tokenHash;
+      mockMatch.raw_reset_token = resetToken;
+      mockMatch.reset_password_code = resetCode;
+      mockMatch.reset_password_expires = expiresAt;
     }
 
     // Determine frontend URL
@@ -305,7 +316,7 @@ export const forgotPassword = async (req, res, next) => {
         ? (isEthereal
             ? `Password reset code sent! Email preview available via Ethereal Mail.`
             : `Password reset email with code ${resetCode} sent successfully to ${normalizedEmail}.`)
-        : `Password reset code generated. Use code ${resetCode} or the development link below.`,
+        : `Password reset code generated. Use code ${resetCode} or the direct link below.`,
       data: {
         emailSent,
         isEthereal: !!isEthereal,
@@ -344,6 +355,10 @@ export const resetPassword = async (req, res, next) => {
         user = dbResult.rows[0];
       }
     } catch (dbErr) {
+      console.warn('[DB NOTICE] Error checking DB for reset token:', dbErr.message);
+    }
+
+    if (!user) {
       user = mockUsers.find(
         u => (u.reset_password_token === tokenHash || u.reset_password_token === cleanToken || u.raw_reset_token === cleanToken || u.reset_password_code === cleanToken) &&
              u.reset_password_expires && new Date(u.reset_password_expires) > new Date()
@@ -357,18 +372,30 @@ export const resetPassword = async (req, res, next) => {
     // Hash new password using bcryptjs
     const newPasswordHash = await hashPassword(password);
 
-    // Invalidate reset token & code immediately (single use) and update password hash
+    // Invalidate reset token & code immediately (single use) and update password hash in DB
     try {
       await pool.query(
         'UPDATE users SET password_hash = $1, reset_password_token = NULL, reset_password_code = NULL, reset_password_expires = NULL WHERE id = $2',
         [newPasswordHash, user.id]
       );
     } catch (dbErr) {
-      user.password_hash = newPasswordHash;
-      user.reset_password_token = null;
-      user.raw_reset_token = null;
-      user.reset_password_code = null;
-      user.reset_password_expires = null;
+      console.warn('[DB NOTICE] Failed updating password in DB:', dbErr.message);
+    }
+
+    // Always sync memory store
+    user.password_hash = newPasswordHash;
+    user.reset_password_token = null;
+    user.raw_reset_token = null;
+    user.reset_password_code = null;
+    user.reset_password_expires = null;
+
+    const mockMatch = mockUsers.find(u => u.id === user.id || u.email === user.email);
+    if (mockMatch) {
+      mockMatch.password_hash = newPasswordHash;
+      mockMatch.reset_password_token = null;
+      mockMatch.raw_reset_token = null;
+      mockMatch.reset_password_code = null;
+      mockMatch.reset_password_expires = null;
     }
 
     console.log(`[Password Reset] Password updated successfully for user ${user.email} (ID ${user.id})`);

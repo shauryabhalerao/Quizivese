@@ -23,14 +23,15 @@ try {
 export class GeminiService {
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || config.ai.apiKey || '';
-    this.configuredModel = process.env.GEMINI_MODEL || config.ai.model || 'gemini-3.6-flash';
+    this.configuredModel = process.env.GEMINI_MODEL || config.ai.model || 'gemini-2.5-flash';
     
-    // Ordered candidate list focusing on active Gemini 3.x Flash models
+    // Ordered candidate list focusing on active Gemini models
     const candidates = [
       this.configuredModel,
-      'gemini-3.6-flash',
-      'gemini-3.5-flash',
-      'gemini-3.5-flash-lite'
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-2.0-flash-lite'
     ];
     this.modelCandidates = Array.from(new Set(candidates.filter(Boolean)));
 

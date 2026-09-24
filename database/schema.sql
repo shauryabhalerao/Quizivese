@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     longest_streak INT NOT NULL DEFAULT 1 CHECK (longest_streak >= 0),
     last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     reset_password_token VARCHAR(255),
+    reset_password_code VARCHAR(10),
     reset_password_expires TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Schema Migration Alter Guards for users
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_code VARCHAR(10);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP WITH TIME ZONE;
 
 -- 2. QUIZZES TABLE
