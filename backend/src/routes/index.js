@@ -4,7 +4,7 @@ import quizRoutes from './quiz.routes.js';
 import attemptRoutes from './attempt.routes.js';
 import leaderboardRoutes from './leaderboard.routes.js';
 import achievementRoutes from './achievement.routes.js';
-import aiRoutes from './ai.routes.js';
+import aiRoutes from './aiQuiz.routes.js';
 import adminRoutes from './admin.routes.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { checkDbConnection } from '../config/db.js';

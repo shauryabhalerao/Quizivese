@@ -19,9 +19,15 @@ CREATE TABLE IF NOT EXISTS users (
     current_streak INT NOT NULL DEFAULT 1 CHECK (current_streak >= 0),
     longest_streak INT NOT NULL DEFAULT 1 CHECK (longest_streak >= 0),
     last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    reset_password_token VARCHAR(255),
+    reset_password_expires TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Schema Migration Alter Guards for users
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_token VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_password_expires TIMESTAMP WITH TIME ZONE;
 
 -- 2. QUIZZES TABLE
 -- Stores assessment metadata, time limits, difficulty grading, and rewards
@@ -36,10 +42,14 @@ CREATE TABLE IF NOT EXISTS quizzes (
     points_reward INT NOT NULL DEFAULT 100 CHECK (points_reward >= 0),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     total_attempts INT NOT NULL DEFAULT 0 CHECK (total_attempts >= 0),
+    source VARCHAR(50) NOT NULL DEFAULT 'AI',
     created_by VARCHAR(64) REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Schema Migration Alter Guard for existing DBs
+ALTER TABLE quizzes ADD COLUMN IF NOT EXISTS source VARCHAR(50) DEFAULT 'AI';
 
 -- 3. QUESTIONS TABLE
 -- Stores question prompts, topic classification, authoritative correct answers, and explanations
@@ -82,8 +92,12 @@ CREATE TABLE IF NOT EXISTS quiz_attempts (
     status VARCHAR(30) NOT NULL DEFAULT 'Passed',
     xp_earned INT NOT NULL DEFAULT 0 CHECK (xp_earned >= 0),
     points_earned INT NOT NULL DEFAULT 0 CHECK (points_earned >= 0),
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Schema Migration Alter Guard for existing DBs
+ALTER TABLE quiz_attempts ADD COLUMN IF NOT EXISTS started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
 
 -- 6. ATTEMPT_ANSWERS TABLE
 -- Records the student's selected answer for every question in each attempt for granular review

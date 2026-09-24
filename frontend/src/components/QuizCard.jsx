@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, HelpCircle, Zap, ArrowRight, Play } from 'lucide-react';
+import { Clock, HelpCircle, Zap, ArrowRight, Play, Share2, Check } from 'lucide-react';
 
 const QuizCard = ({ quiz }) => {
+  const [copied, setCopied] = useState(false);
+
   const getDifficultyBadge = (difficulty) => {
     switch (difficulty?.toLowerCase()) {
       case 'easy':
@@ -16,8 +18,29 @@ const QuizCard = ({ quiz }) => {
     }
   };
 
+  const handleShareLink = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const quizUrl = `${window.location.origin}/quiz/${quiz.id}`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(quizUrl);
+    } else {
+      const input = document.createElement('input');
+      input.value = quizUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
+
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2200);
+  };
+
   return (
-    <div className="card card-hover" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="card card-hover" style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
       {/* Category & Difficulty */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <span className="badge badge-indigo">{quiz.category}</span>
@@ -56,14 +79,49 @@ const QuizCard = ({ quiz }) => {
         </div>
       </div>
 
-      {/* Action CTA */}
-      <Link 
-        to={`/quiz/${quiz.id}`} 
-        className="btn btn-primary"
-        style={{ width: '100%', justifyContent: 'center' }}
-      >
-        <Play size={16} fill="currentColor" /> Start Quiz
-      </Link>
+      {/* Copied Toast Alert */}
+      {copied && (
+        <div style={{
+          position: 'absolute',
+          bottom: '4.25rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'rgba(16, 185, 129, 0.95)',
+          color: '#ffffff',
+          fontSize: '0.78rem',
+          fontWeight: 700,
+          padding: '0.35rem 0.85rem',
+          borderRadius: 'var(--radius-full)',
+          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          whiteSpace: 'nowrap',
+          zIndex: 10
+        }}>
+          <Check size={14} /> Link Copied to Clipboard!
+        </div>
+      )}
+
+      {/* Action CTAs */}
+      <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+        <Link 
+          to={`/quiz/${quiz.id}`} 
+          className="btn btn-primary"
+          style={{ flex: 1, justifyContent: 'center' }}
+        >
+          <Play size={16} fill="currentColor" /> Start Quiz
+        </Link>
+
+        <button
+          onClick={handleShareLink}
+          className={`btn ${copied ? 'btn-easy' : 'btn-secondary'}`}
+          title="Copy direct quiz link"
+          style={{ padding: '0 0.85rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          {copied ? <Check size={18} color="#10b981" /> : <Share2 size={18} />}
+        </button>
+      </div>
     </div>
   );
 };

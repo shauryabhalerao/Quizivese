@@ -15,27 +15,35 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "http://localhost:5173", "http://127.0.0.1:5173"]
+      connectSrc: ["'self'", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5001", "https:"]
     }
   },
   frameguard: { action: 'deny' },
   noSniff: true
 }));
 
-// CORS Configuration (supporting frontend on localhost:5173 and production)
+// CORS Configuration (supporting frontend on localhost:5173 and production CORS_ORIGIN)
+const localOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://localhost:5000', 'http://localhost:5001'];
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow server-to-server or requests with no origin (e.g. mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
-    
-    if (config.cors.allowedOrigins.indexOf(origin) !== -1 || config.cors.allowedOrigins.includes('*')) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Permissive in development for seamless local testing
+
+    const allowed = [...config.cors.allowedOrigins, ...localOrigins];
+    if (allowed.includes(origin) || config.cors.allowedOrigins.includes('*')) {
+      return callback(null, true);
     }
+    
+    if (!config.isProduction && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS origin policy blocked request from ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

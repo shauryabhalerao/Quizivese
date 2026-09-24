@@ -11,6 +11,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import QuizzesPage from './pages/QuizzesPage';
 import QuizActivePage from './pages/QuizActivePage';
@@ -18,9 +20,11 @@ import QuizResultPage from './pages/QuizResultPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import AchievementsPage from './pages/AchievementsPage';
 import AiQuizGenPage from './pages/AiQuizGenPage';
+import HistoryPage from './pages/HistoryPage';
 import CreateQuizPage from './pages/CreateQuizPage';
 import LiveQuizPage from './pages/LiveQuizPage';
 import AdminPage from './pages/AdminPage';
+import TeacherDashboardPage from './pages/TeacherDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 function App() {
@@ -32,10 +36,12 @@ function App() {
             <Navbar />
             <main className="main-content">
               <Routes>
-                {/* Public Discovery Routes */}
+                {/* Public Discovery & Auth Routes */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/quizzes" element={<QuizzesPage />} />
                 <Route path="/create-quiz" element={<CreateQuizPage />} />
                 <Route path="/live-quiz" element={<LiveQuizPage />} />
@@ -49,6 +55,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <DashboardPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/history" 
+                element={
+                  <ProtectedRoute>
+                    <HistoryPage />
                   </ProtectedRoute>
                 } 
               />
@@ -69,7 +83,15 @@ function App() {
                 } 
               />
 
-              {/* Protected Admin Routes */}
+              {/* Protected Teacher & Admin Routes */}
+              <Route 
+                path="/teacher" 
+                element={
+                  <ProtectedRoute requireTeacher={true}>
+                    <TeacherDashboardPage />
+                  </ProtectedRoute>
+                } 
+              />
               <Route 
                 path="/admin" 
                 element={

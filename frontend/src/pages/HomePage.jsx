@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuiz } from '../context/QuizContext';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ import {
   Users, 
   CheckCircle2, 
   ArrowRight,
+  KeyRound,
   BrainCircuit,
   Timer,
   Code2,
@@ -31,7 +32,9 @@ import {
   BarChart3,
   Check,
   ChevronRight,
-  Target
+  Target,
+  UploadCloud,
+  Scan
 } from 'lucide-react';
 
 const categoriesList = [
@@ -107,6 +110,29 @@ const HomePage = () => {
 
   const safeQuizzes = Array.isArray(quizzes) ? quizzes : [];
 
+  const [heroCode, setHeroCode] = useState('');
+  const [heroCodeError, setHeroCodeError] = useState('');
+
+  const handleHeroJoin = (e) => {
+    e.preventDefault();
+    setHeroCodeError('');
+    const trimmed = heroCode.trim().toUpperCase();
+    if (!trimmed) {
+      setHeroCodeError('Please enter a valid quiz code.');
+      return;
+    }
+    const match = safeQuizzes.find(q =>
+      (q.quizCode && q.quizCode.toUpperCase() === trimmed) ||
+      (q.id && q.id.toUpperCase() === trimmed) ||
+      (q.id && q.id.toUpperCase().includes(trimmed))
+    );
+    if (match) {
+      navigate(`/quiz/${match.id}`);
+    } else {
+      setHeroCodeError(`Quiz code "${trimmed}" not found. Try sample codes: WEB101, PROG201, or DS301.`);
+    }
+  };
+
   // Filter featured & popular quizzes
   const featuredQuizzes = safeQuizzes.filter(q => q && q.isFeatured && q.isActive).slice(0, 3);
   const popularQuizzes = safeQuizzes.filter(q => q && (q.isPopular || !q.isFeatured) && q.isActive).slice(0, 3);
@@ -161,19 +187,60 @@ const HomePage = () => {
         </p>
 
         {/* Primary & Secondary CTAs */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '2.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
           <Link to="/quizzes" className="btn btn-primary btn-lg" style={{ padding: '0.85rem 1.85rem' }}>
             <Play size={18} fill="currentColor" /> Start Quiz
           </Link>
           <a href="#categories" className="btn btn-outline btn-lg" style={{ padding: '0.85rem 1.85rem' }}>
             <Compass size={18} /> Explore Quizzes
           </a>
-          <Link to="/ai-quiz" className="btn btn-gold btn-lg" style={{ padding: '0.85rem 1.85rem' }}>
-            <Bot size={18} /> Generate with AI
+          <Link to="/ai-quiz?mode=upload" className="btn btn-gold btn-lg" style={{ padding: '0.85rem 1.85rem' }}>
+            <UploadCloud size={18} /> AI Scan Notes / PDF
           </Link>
           <Link to="/live-quiz" className="btn btn-secondary btn-lg" style={{ padding: '0.85rem 1.5rem' }}>
             <Zap size={18} color="#f59e0b" fill="#f59e0b" /> Live Battle Arena
           </Link>
+        </div>
+
+        {/* Quick Quiz Code Join Bar */}
+        <div style={{
+          maxWidth: 540,
+          margin: '0 auto 2.5rem',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '0.75rem 1rem',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)'
+        }}>
+          <form onSubmit={handleHeroJoin} style={{ display: 'flex', gap: '0.65rem', alignItems: 'center' }}>
+            <div style={{ color: 'var(--accent-indigo)', display: 'flex' }}>
+              <KeyRound size={20} />
+            </div>
+            <input
+              type="text"
+              value={heroCode}
+              onChange={(e) => { setHeroCode(e.target.value.toUpperCase()); setHeroCodeError(''); }}
+              placeholder="Have a Quiz Code? Enter here (e.g. WEB101)"
+              style={{
+                flex: 1,
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-primary)',
+                fontWeight: 600,
+                fontSize: '0.95rem',
+                outline: 'none',
+                letterSpacing: '0.05em'
+              }}
+            />
+            <button type="submit" className="btn btn-primary btn-sm" style={{ fontWeight: 700, padding: '0.5rem 1rem' }}>
+              Join Test
+            </button>
+          </form>
+          {heroCodeError && (
+            <div style={{ color: '#f87171', fontSize: '0.8rem', textAlign: 'left', marginTop: '0.5rem', paddingLeft: '1.75rem' }}>
+              {heroCodeError}
+            </div>
+          )}
         </div>
 
         {/* Floating Trust Indicators */}
@@ -187,10 +254,10 @@ const HomePage = () => {
           fontSize: '0.85rem'
         }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <CheckCircle2 size={16} color="#10b981" /> 100% Free & Open Access
+            <Scan size={16} color="#06b6d4" /> AI PDF & Image Notes Scanning
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <CheckCircle2 size={16} color="#10b981" /> Anti-Loss Auto-Save
+            <CheckCircle2 size={16} color="#10b981" /> 100% Free & Open Access
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <CheckCircle2 size={16} color="#10b981" /> Pedagogical Explanations
@@ -641,15 +708,15 @@ const HomePage = () => {
           </div>
 
           <h2 style={{ fontSize: '2.2rem', fontWeight: 800, marginBottom: '0.75rem' }}>
-            Generate Custom Quizzes on Any Topic
+            Scan Syllabus, Notes & Images into Quizzes
           </h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '1.05rem', maxWidth: 640, margin: '0 auto 2rem', lineHeight: 1.6 }}>
-            Have specific lecture notes, a syllabus, or a niche technical domain? Prompt our AI assistant to instantly synthesize up to 50 validated questions with pedagogical rationales.
+            Upload your course syllabus PDF, lecture slides, or photos of textbook chapters. Our multimodal AI scans the material, identifies core learning objectives, and synthesizes verified single-choice assessments instantly.
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-            <Link to="/ai-quiz" className="btn btn-gold btn-lg">
-              <Sparkles size={18} /> Launch AI Quiz Generator
+            <Link to="/ai-quiz?mode=upload" className="btn btn-gold btn-lg">
+              <UploadCloud size={18} /> Upload & Scan Syllabus (PDF / Images)
             </Link>
             <Link to="/create-quiz" className="btn btn-secondary btn-lg">
               Manual Quiz Builder Studio

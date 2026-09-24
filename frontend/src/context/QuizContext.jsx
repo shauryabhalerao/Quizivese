@@ -7,10 +7,26 @@ const QuizContext = createContext(null);
 
 export const QuizProvider = ({ children }) => {
   const { updateUserStats } = useAuth();
-  const [quizzes, setQuizzes] = useState(initialQuizzes);
+  const [quizzes, setQuizzes] = useState(() => {
+    try {
+      const saved = localStorage.getItem('quiziverse_quizzes');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return initialQuizzes;
+  });
   const [attempts, setAttempts] = useState(initialRecentAttempts);
   const [achievements, setAchievements] = useState(initialAchievements);
   const [loading, setLoading] = useState(true);
+
+  // Sync quizzes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('quiziverse_quizzes', JSON.stringify(quizzes));
+    } catch (e) {}
+  }, [quizzes]);
 
   // Fetch live quizzes and achievements on mount
   useEffect(() => {
@@ -22,6 +38,7 @@ export const QuizProvider = ({ children }) => {
         ]);
 
         if (quizRes.status === 'fulfilled' && quizRes.value?.data && Array.isArray(quizRes.value.data) && quizRes.value.data.length > 0) {
+          // If server has quizzes, merge/update
           setQuizzes(quizRes.value.data);
         }
 
@@ -103,30 +120,60 @@ export const QuizProvider = ({ children }) => {
       let correctCount = 0;
       let incorrectCount = 0;
       let unansweredCount = 0;
+      let totalPossibleMarks = 0;
+      let totalMarksObtained = 0;
 
       const breakdown = (quiz.questions || []).map((q, idx) => {
-        const selectedOption = answers[idx];
-        const isUnanswered = selectedOption === undefined || selectedOption === null;
-        const isCorrect = !isUnanswered && selectedOption === (q.correctAnswer ?? 1);
+        let selectedOption = undefined;
+        if (answers[idx] !== undefined) {
+          selectedOption = answers[idx];
+        } else if (answers[String(idx)] !== undefined) {
+          selectedOption = answers[String(idx)];
+        } else if (q.id && answers[q.id] !== undefined) {
+          selectedOption = answers[q.id];
+        }
 
-        if (isUnanswered) unansweredCount++;
-        else if (isCorrect) correctCount++;
-        else incorrectCount++;
+        const isUnanswered = selectedOption === undefined || selectedOption === null || selectedOption === '';
+        const parsedOption = isUnanswered ? null : Number(selectedOption);
+        const correctAnswer = Number(q.correctAnswer ?? q.correct_answer_index ?? 0);
+        const isCorrect = !isUnanswered && parsedOption === correctAnswer;
+
+        const questionMarks = Number(q.marks) || 1;
+        const negativeMark = Number(q.negativeMark) || 0;
+        let marksAwarded = 0;
+
+        if (isUnanswered) {
+          unansweredCount++;
+          marksAwarded = 0;
+        } else if (isCorrect) {
+          correctCount++;
+          marksAwarded = questionMarks;
+        } else {
+          incorrectCount++;
+          marksAwarded = negativeMark > 0 ? -negativeMark : 0;
+        }
+
+        totalPossibleMarks += questionMarks;
+        totalMarksObtained += marksAwarded;
 
         return {
           questionId: q.id,
           questionText: q.questionText,
           options: q.options,
-          correctAnswer: q.correctAnswer ?? 1,
-          selectedAnswer: selectedOption,
+          correctAnswer,
+          selectedAnswer: parsedOption,
           isCorrect,
           isUnanswered,
+          marksAwarded,
+          maxMarks: questionMarks,
+          negativeMark,
           explanation: q.explanation || 'Verified conceptual rationale.',
           topic: q.topic,
           difficulty: q.difficulty
         };
       });
 
+      totalMarksObtained = Math.max(0, Math.round(totalMarksObtained * 100) / 100);
       const totalQuestions = quiz.questions?.length || 1;
       const percentage = Math.round((correctCount / totalQuestions) * 100);
       const xpEarned = Math.round((percentage / 100) * (quiz.xpReward || 300));
@@ -137,6 +184,8 @@ export const QuizProvider = ({ children }) => {
         quizId: quiz.id,
         quizTitle: quiz.title,
         score: correctCount,
+        marksObtained: totalMarksObtained,
+        totalMarks: totalPossibleMarks,
         totalQuestions,
         correctCount,
         incorrectCount,
@@ -245,7 +294,27 @@ export const QuizProvider = ({ children }) => {
       await api.delete(`/admin/quizzes/${quizId}`);
     } catch (e) {}
 
-    setQuizzes(prev => prev.filter(q => q.id !== quizId));
+    setQuizzes(prev => {
+      const filtered = prev.filter(q => q.id !== quizId);
+      try {
+        localStorage.setItem('quiziverse_quizzes', JSON.stringify(filtered));
+      } catch (e) {}
+      return filtered;
+    });
+  };
+
+  const clearAllQuizzes = () => {
+    setQuizzes([]);
+    try {
+      localStorage.setItem('quiziverse_quizzes', JSON.stringify([]));
+    } catch (e) {}
+  };
+
+  const resetQuizzesToDefault = () => {
+    setQuizzes(initialQuizzes);
+    try {
+      localStorage.setItem('quiziverse_quizzes', JSON.stringify(initialQuizzes));
+    } catch (e) {}
   };
 
   const toggleQuizStatus = async (quizId) => {
@@ -272,6 +341,8 @@ export const QuizProvider = ({ children }) => {
         addQuiz,
         updateQuiz,
         deleteQuiz,
+        clearAllQuizzes,
+        resetQuizzesToDefault,
         toggleQuizStatus
       }}
     >

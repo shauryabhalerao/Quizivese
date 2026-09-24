@@ -22,11 +22,11 @@ class ApiClient {
     }
   }
 
-  getHeaders(customHeaders = {}) {
-    const headers = {
-      'Content-Type': 'application/json',
-      ...customHeaders
-    };
+  getHeaders(customHeaders = {}, isFormData = false) {
+    const headers = { ...customHeaders };
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
 
     const token = this.getToken();
     if (token) {
@@ -38,7 +38,7 @@ class ApiClient {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
-    const headers = this.getHeaders(options.headers);
+    const headers = this.getHeaders(options.headers, options.isFormData);
 
     const config = {
       ...options,
@@ -77,10 +77,21 @@ class ApiClient {
   }
 
   post(endpoint, body, options = {}) {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
     return this.request(endpoint, {
       ...options,
       method: 'POST',
-      body: JSON.stringify(body)
+      body: isFormData ? body : JSON.stringify(body),
+      isFormData
+    });
+  }
+
+  postForm(endpoint, formData, options = {}) {
+    return this.request(endpoint, {
+      ...options,
+      method: 'POST',
+      body: formData,
+      isFormData: true
     });
   }
 

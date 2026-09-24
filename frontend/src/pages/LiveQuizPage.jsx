@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useQuiz } from '../context/QuizContext';
 import confetti from 'canvas-confetti';
@@ -43,9 +43,11 @@ const LiveQuizPage = () => {
   const { currentUser } = useAuth();
   const { recordAttempt } = useQuiz();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlCode = searchParams.get('code');
 
   // Arena State
-  const [roomCode, setRoomCode] = useState(() => generateRoomCode());
+  const [roomCode, setRoomCode] = useState(() => (urlCode ? urlCode.toUpperCase() : generateRoomCode()));
   const [joinCodeInput, setJoinCodeInput] = useState('');
   const [stage, setStage] = useState(STAGES.LOBBY);
   const [participants, setParticipants] = useState(() => createLiveParticipantsRoster(currentUser, 104));
@@ -55,6 +57,7 @@ const LiveQuizPage = () => {
   const [selectedOption, setSelectedOption] = useState(null);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [liveAnsweredCount, setLiveAnsweredCount] = useState(0);
 
   const questionTimerRef = useRef(null);
@@ -62,6 +65,13 @@ const LiveQuizPage = () => {
 
   const currentQuestion = defaultArenaQuestions[currentQuestionIndex];
   const totalQuestions = defaultArenaQuestions.length;
+
+  // Sync URL parameter if changed
+  useEffect(() => {
+    if (urlCode && urlCode.toUpperCase() !== roomCode) {
+      setRoomCode(urlCode.toUpperCase());
+    }
+  }, [urlCode]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -78,6 +88,23 @@ const LiveQuizPage = () => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (e) {}
+  };
+
+  // Handle Share Direct Arena Link
+  const handleShareArenaLink = () => {
+    const arenaUrl = `${window.location.origin}/live?code=${roomCode}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(arenaUrl);
+    } else {
+      const input = document.createElement('input');
+      input.value = arenaUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2200);
   };
 
   // Join existing code
@@ -264,7 +291,15 @@ const LiveQuizPage = () => {
                     title="Copy Room Code to share with peers"
                   >
                     {copied ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
-                    <span>{copied ? 'Copied!' : 'Copy'}</span>
+                    <span>{copied ? 'Copied Code!' : 'Copy Code'}</span>
+                  </button>
+                  <button 
+                    onClick={handleShareArenaLink} 
+                    className={`btn ${copiedLink ? 'btn-easy' : 'btn-indigo'} btn-sm`}
+                    title="Copy direct live arena join link"
+                  >
+                    {copiedLink ? <Check size={16} color="#ffffff" /> : <Share2 size={16} />}
+                    <span>{copiedLink ? 'Link Copied!' : 'Share Arena Link'}</span>
                   </button>
                 </div>
               </div>

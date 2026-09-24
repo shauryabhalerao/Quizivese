@@ -1,22 +1,27 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useQuiz } from '../context/QuizContext';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  Plus, 
-  Trash2, 
-  CheckCircle2, 
-  AlertCircle, 
-  Clock, 
-  Award, 
-  BookOpen, 
-  HelpCircle, 
-  Layers, 
-  Sparkles, 
-  GraduationCap, 
-  School,
+import { useQuiz } from '../context/QuizContext';
+import ShareQuizModal from '../components/ShareQuizModal';
+import {
+  Sparkles,
+  Plus,
+  Trash2,
+  Save,
+  CheckCircle2,
+  AlertCircle,
+  HelpCircle,
+  Clock,
+  Layers,
+  Award,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Zap,
   ArrowRight,
-  Send
+  ShieldAlert,
+  Copy,
+  Info
 } from 'lucide-react';
 
 const defaultCategories = [
@@ -40,13 +45,26 @@ const gradeLevels = [
   'General Audience / Open to All'
 ];
 
+const createBlankQuestion = (id) => ({
+  id: id || `q-manual-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+  type: 'multiple-choice',
+  questionText: '',
+  topic: '',
+  options: ['', '', '', ''],
+  correctAnswer: 0,
+  marks: 1,
+  explanation: ''
+});
+
 const CreateQuizPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addQuiz } = useQuiz();
   const { currentUser } = useAuth();
 
   // Quiz Level Metadata
   const [title, setTitle] = useState('');
+  const [quizCode, setQuizCode] = useState(() => 'QUIZ' + Math.floor(100 + Math.random() * 900));
   const [categorySelection, setCategorySelection] = useState('Science & Biology');
   const [customCategory, setCustomCategory] = useState('');
   const [gradeLevel, setGradeLevel] = useState('General Audience / Open to All');
@@ -54,21 +72,50 @@ const CreateQuizPage = () => {
   const [description, setDescription] = useState('');
   const [timeLimitMinutes, setTimeLimitMinutes] = useState(15);
   const [autoCalculateTime, setAutoCalculateTime] = useState(true);
+  const [negativeMarking, setNegativeMarking] = useState('0');
 
-  // Questions Array (Up to 50)
+  // Share Modal State
+  const [createdQuizForShare, setCreatedQuizForShare] = useState(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // Questions Array (Up to 100)
   const [questions, setQuestions] = useState([
-    {
-      id: `q-manual-1`,
-      questionText: '',
-      topic: '',
-      options: ['', '', '', ''],
-      correctAnswer: 0,
-      explanation: ''
-    }
+    createBlankQuestion('q-manual-1')
   ]);
 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // If redirected from AI Scanner with imported questions, populate form
+  useEffect(() => {
+    if (location.state?.importedQuiz) {
+      const imported = location.state.importedQuiz;
+      if (imported.title) setTitle(imported.title);
+      if (imported.description) setDescription(imported.description);
+      if (imported.category) {
+        if (defaultCategories.includes(imported.category)) {
+          setCategorySelection(imported.category);
+        } else {
+          setCategorySelection('Custom Subject');
+          setCustomCategory(imported.category);
+        }
+      }
+      if (imported.difficulty) setDifficulty(imported.difficulty);
+      if (imported.timeLimitMinutes) setTimeLimitMinutes(imported.timeLimitMinutes);
+      if (imported.questions && imported.questions.length > 0) {
+        setQuestions(imported.questions.map((q, idx) => ({
+          id: q.id || `q-imported-${Date.now()}-${idx}`,
+          type: q.type || 'multiple-choice',
+          questionText: q.questionText || '',
+          topic: q.topic || imported.title || '',
+          options: q.options || ['', '', '', ''],
+          correctAnswer: q.correctAnswer !== undefined ? q.correctAnswer : 0,
+          marks: q.marks || 1,
+          explanation: q.explanation || ''
+        })));
+      }
+    }
+  }, [location.state]);
 
   // Helper to resolve effective category
   const effectiveCategory = categorySelection === 'Custom Subject'
@@ -82,23 +129,48 @@ const CreateQuizPage = () => {
     }
   };
 
-  // Add a new blank question (Max 50)
+  // Adjust total questions to a specific target count (1-100)
+  const handleSetTargetCount = (target) => {
+    const parsed = parseInt(target, 10);
+    if (isNaN(parsed)) return;
+
+    if (parsed < 1 || parsed > 100) {
+      setError('Number of questions must be an integer between 1 and 100.');
+      return;
+    }
+
+    setError('');
+    const currentCount = questions.length;
+
+    if (parsed === currentCount) return;
+
+    if (parsed > currentCount) {
+      // Append blank questions up to target
+      const additions = [];
+      for (let i = currentCount; i < parsed; i++) {
+        additions.push(createBlankQuestion(`q-manual-${Date.now()}-${i}`));
+      }
+      const updated = [...questions, ...additions];
+      setQuestions(updated);
+      handleQuestionCountChange(updated.length);
+    } else {
+      // Trim to target
+      const updated = questions.slice(0, parsed);
+      setQuestions(updated);
+      handleQuestionCountChange(updated.length);
+    }
+  };
+
+  // Add a single blank question (Max 100)
   const handleAddQuestion = () => {
-    if (questions.length >= 50) {
-      setError('A maximum of 50 questions is supported per quiz.');
+    if (questions.length >= 100) {
+      setError('A maximum of 100 questions is supported per quiz.');
       return;
     }
     setError('');
     const nextList = [
       ...questions,
-      {
-        id: `q-manual-${Date.now()}-${questions.length}`,
-        questionText: '',
-        topic: '',
-        options: ['', '', '', ''],
-        correctAnswer: 0,
-        explanation: ''
-      }
+      createBlankQuestion(`q-manual-${Date.now()}-${questions.length}`)
     ];
     setQuestions(nextList);
     handleQuestionCountChange(nextList.length);
@@ -116,11 +188,33 @@ const CreateQuizPage = () => {
     handleQuestionCountChange(nextList.length);
   };
 
-  // Update question text / subtopic / explanation / correct answer
+  // Update question text / subtopic / explanation / correct answer / marks
   const handleQuestionChange = (idx, field, value) => {
     setQuestions(prev => {
       const updated = [...prev];
       updated[idx] = { ...updated[idx], [field]: value };
+      return updated;
+    });
+  };
+
+  // Change question type between multiple-choice and true-false
+  const handleQuestionTypeChange = (idx, newType) => {
+    setQuestions(prev => {
+      const updated = [...prev];
+      if (newType === 'true-false') {
+        updated[idx] = {
+          ...updated[idx],
+          type: 'true-false',
+          options: ['True', 'False'],
+          correctAnswer: updated[idx].correctAnswer > 1 ? 0 : updated[idx].correctAnswer
+        };
+      } else {
+        updated[idx] = {
+          ...updated[idx],
+          type: 'multiple-choice',
+          options: ['', '', '', '']
+        };
+      }
       return updated;
     });
   };
@@ -139,6 +233,7 @@ const CreateQuizPage = () => {
   // Load a quick starter template for teachers
   const handleLoadTemplate = () => {
     setTitle('General Science & Environmental Systems');
+    setQuizCode('SCI202');
     setCategorySelection('Science & Biology');
     setGradeLevel('High School (9-12)');
     setDifficulty('Medium');
@@ -146,6 +241,8 @@ const CreateQuizPage = () => {
     setQuestions([
       {
         id: `q-manual-t1`,
+        type: 'multiple-choice',
+        marks: 1,
         questionText: 'What is the primary function of chlorophyll in plant cells?',
         topic: 'Plant Biology',
         options: [
@@ -159,6 +256,8 @@ const CreateQuizPage = () => {
       },
       {
         id: `q-manual-t2`,
+        type: 'multiple-choice',
+        marks: 1,
         questionText: 'Which layer of Earth\'s atmosphere contains the protective ozone layer?',
         topic: 'Atmospheric Science',
         options: [
@@ -172,6 +271,8 @@ const CreateQuizPage = () => {
       },
       {
         id: `q-manual-t3`,
+        type: 'multiple-choice',
+        marks: 1,
         questionText: 'What type of symbiotic relationship benefits one organism while the other is neither helped nor harmed?',
         topic: 'Ecology',
         options: [
@@ -185,8 +286,12 @@ const CreateQuizPage = () => {
       }
     ]);
     setTimeLimitMinutes(10);
+    setNegativeMarking('0');
     setError('');
   };
+
+  // Total possible marks
+  const totalPossibleMarks = questions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0);
 
   // Submit and Publish Quiz
   const handleSubmit = async (e) => {
@@ -195,6 +300,12 @@ const CreateQuizPage = () => {
 
     if (!title.trim()) {
       setError('Please provide a quiz title.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (!quizCode.trim()) {
+      setError('Please provide a unique Quiz Code for student access.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -212,13 +323,14 @@ const CreateQuizPage = () => {
         setError(`Question #${i + 1} prompt cannot be empty.`);
         return;
       }
-      for (let o = 0; o < 4; o++) {
-        if (!q.options[o].trim()) {
-          setError(`Question #${i + 1} has an empty option (Option ${['A', 'B', 'C', 'D'][o]}). All 4 choices are required.`);
+      const optionCount = q.type === 'true-false' ? 2 : 4;
+      for (let o = 0; o < optionCount; o++) {
+        if (!q.options[o] || !q.options[o].trim()) {
+          setError(`Question #${i + 1} has an empty option (Option ${['A', 'B', 'C', 'D'][o]}). All choices are required.`);
           return;
         }
       }
-      if (q.correctAnswer === undefined || q.correctAnswer < 0 || q.correctAnswer > 3) {
+      if (q.correctAnswer === undefined || q.correctAnswer < 0 || q.correctAnswer >= optionCount) {
         setError(`Question #${i + 1} must have a designated correct answer choice.`);
         return;
       }
@@ -234,12 +346,18 @@ const CreateQuizPage = () => {
         difficulty,
         timeLimitMinutes: Number(timeLimitMinutes) || 15,
         targetGrade: gradeLevel,
+        quizCode: quizCode.trim().toUpperCase(),
+        negativeMarking: Number(negativeMarking) || 0,
+        totalMarks: totalPossibleMarks,
         createdBy: currentUser?.name || 'Educator',
         authorRole: currentUser?.role || 'teacher',
         xpReward: questions.length * 75,
         pointsReward: questions.length * 30,
         questions: questions.map((q, idx) => ({
           ...q,
+          marks: Number(q.marks) || 1,
+          type: q.type || 'multiple-choice',
+          options: q.type === 'true-false' ? q.options.slice(0, 2) : q.options,
           topic: q.topic.trim() || effectiveCategory,
           order_index: idx
         }))
@@ -248,8 +366,9 @@ const CreateQuizPage = () => {
       const created = await addQuiz(quizPayload);
       setIsSubmitting(false);
 
-      if (created?.id) {
-        navigate(`/quiz/${created.id}`);
+      if (created) {
+        setCreatedQuizForShare(created);
+        setIsShareModalOpen(true);
       } else {
         navigate('/quizzes');
       }
@@ -292,14 +411,24 @@ const CreateQuizPage = () => {
           </p>
         </div>
 
-        <button 
-          type="button" 
-          onClick={handleLoadTemplate}
-          className="btn btn-secondary btn-sm"
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Sparkles size={15} style={{ color: 'var(--gold)' }} /> Load Example Template
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <Link 
+            to="/ai-quiz?mode=upload"
+            className="btn btn-gold btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <UploadCloud size={15} /> AI Scan Syllabus / PDF
+          </Link>
+
+          <button 
+            type="button" 
+            onClick={handleLoadTemplate}
+            className="btn btn-secondary btn-sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Sparkles size={15} style={{ color: 'var(--gold)' }} /> Load Example Template
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -353,6 +482,56 @@ const CreateQuizPage = () => {
                 onChange={(e) => setTitle(e.target.value)}
                 required
               />
+            </div>
+
+            {/* Quiz Access Code */}
+            <div className="form-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Hash size={15} style={{ color: 'var(--accent-indigo)' }} /> Quiz Join Code *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setQuizCode('QUIZ' + Math.floor(100 + Math.random() * 900))}
+                  className="btn btn-outline btn-sm"
+                  style={{ padding: '0.15rem 0.5rem', fontSize: '0.75rem' }}
+                >
+                  Generate
+                </button>
+              </div>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. BIO101, MATH20, EXAM1"
+                value={quizCode}
+                onChange={(e) => setQuizCode(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ''))}
+                required
+                style={{ letterSpacing: '0.08em', fontWeight: 700 }}
+              />
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Share this code with students to let them join immediately.
+              </span>
+            </div>
+
+            {/* Negative Marking Scheme */}
+            <div className="form-group">
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <ShieldAlert size={15} style={{ color: 'var(--danger)' }} /> Negative Marking Penalty
+              </label>
+              <select
+                className="form-select"
+                value={negativeMarking}
+                onChange={(e) => setNegativeMarking(e.target.value)}
+              >
+                <option value="0">None (0 Penalty - Standard)</option>
+                <option value="0.25">-0.25 Marks per wrong answer (1/4 penalty)</option>
+                <option value="0.33">-0.33 Marks per wrong answer (1/3 penalty)</option>
+                <option value="0.5">-0.50 Marks per wrong answer</option>
+                <option value="1">-1.00 Mark per wrong answer</option>
+              </select>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Deducted only for incorrect answers; skipped questions have 0 penalty.
+              </span>
             </div>
 
             {/* Category / Subject */}
@@ -484,20 +663,53 @@ const CreateQuizPage = () => {
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-default)'
                 }}>
-                  {questions.length} / 50 Questions
+                  {questions.length} / 100 Questions
                 </span>
               </h2>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAddQuestion}
-              disabled={questions.length >= 50}
-              className="btn btn-primary btn-sm"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-            >
-              <Plus size={16} /> Add Question
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {/* Question count presets */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: 2 }}>Quick Count:</span>
+                {[5, 10, 20, 30, 50].map(cnt => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    onClick={() => handleSetTargetCount(cnt)}
+                    className={`btn btn-sm ${questions.length === cnt ? 'btn-primary' : 'btn-outline'}`}
+                    style={{ padding: '0.25rem 0.55rem', fontSize: '0.78rem' }}
+                  >
+                    {cnt}
+                  </button>
+                ))}
+              </div>
+
+              {/* Flexible Number Input */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Target:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={questions.length}
+                  onChange={(e) => handleSetTargetCount(e.target.value)}
+                  className="form-input"
+                  style={{ width: 68, padding: '0.3rem 0.5rem', textAlign: 'center', fontSize: '0.85rem' }}
+                  title="Enter exact number of questions (1-100)"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddQuestion}
+                disabled={questions.length >= 100}
+                className="btn btn-primary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+              >
+                <Plus size={16} /> Add Question
+              </button>
+            </div>
           </div>
 
           {/* Questions List */}
@@ -521,7 +733,7 @@ const CreateQuizPage = () => {
                   paddingBottom: '0.75rem',
                   borderBottom: '1px solid var(--border-subtle)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <span style={{
                       background: 'var(--accent-indigo)',
                       color: '#fff',
@@ -533,13 +745,38 @@ const CreateQuizPage = () => {
                       Question #{qIdx + 1}
                     </span>
 
+                    {/* Question Type selector */}
+                    <select
+                      className="form-select"
+                      value={q.type || 'multiple-choice'}
+                      onChange={(e) => handleQuestionTypeChange(qIdx, e.target.value)}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', width: '150px' }}
+                    >
+                      <option value="multiple-choice">Multiple Choice</option>
+                      <option value="true-false">True / False</option>
+                    </select>
+
+                    {/* Per-question Marks */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Marks:</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        className="form-input"
+                        value={q.marks || 1}
+                        onChange={(e) => handleQuestionChange(qIdx, 'marks', Math.max(1, parseInt(e.target.value, 10) || 1))}
+                        style={{ width: '55px', padding: '0.25rem 0.4rem', fontSize: '0.85rem', textAlign: 'center' }}
+                      />
+                    </div>
+
                     <input
                       type="text"
                       className="form-input"
                       placeholder="Subtopic Tag (e.g. Photosynthesis, Algebra...)"
                       value={q.topic}
                       onChange={(e) => handleQuestionChange(qIdx, 'topic', e.target.value)}
-                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', width: '220px' }}
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', width: '200px' }}
                     />
                   </div>
 
@@ -564,14 +801,14 @@ const CreateQuizPage = () => {
                   <textarea
                     className="form-input"
                     rows="2"
-                    placeholder="Type the question or scenario clearly..."
+                    placeholder={q.type === 'true-false' ? "State a proposition (e.g. The mitochondria is known as the powerhouse of the cell)..." : "Type the question or scenario clearly..."}
                     value={q.questionText}
                     onChange={(e) => handleQuestionChange(qIdx, 'questionText', e.target.value)}
                     required
                   />
                 </div>
 
-                {/* 4 Options Grid */}
+                {/* Options Grid */}
                 <div style={{ marginBottom: '1.25rem' }}>
                   <div style={{
                     display: 'flex',
@@ -583,69 +820,127 @@ const CreateQuizPage = () => {
                       Answer Options (Click radio button to designate the <strong>Correct Answer</strong>) *
                     </label>
                     <span style={{ fontSize: '0.78rem', color: 'var(--gold)', fontWeight: 600 }}>
-                      Selected: Choice {['A', 'B', 'C', 'D'][q.correctAnswer]}
+                      Selected Correct: Choice {['A', 'B', 'C', 'D'][q.correctAnswer]} ({q.options[q.correctAnswer] || 'Option'})
                     </span>
                   </div>
 
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                    gap: '0.75rem'
-                  }}>
-                    {['A', 'B', 'C', 'D'].map((letter, optIdx) => {
-                      const isCorrect = q.correctAnswer === optIdx;
-                      return (
-                        <div 
-                          key={letter}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.65rem',
-                            background: isCorrect ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-secondary)',
-                            border: `1px solid ${isCorrect ? 'var(--success)' : 'var(--border-default)'}`,
-                            borderRadius: 'var(--radius-md)',
-                            padding: '0.65rem 0.85rem',
-                            transition: 'all var(--transition-fast)'
-                          }}
-                        >
-                          <input
-                            type="radio"
-                            name={`correct-${qIdx}`}
-                            checked={isCorrect}
-                            onChange={() => handleQuestionChange(qIdx, 'correctAnswer', optIdx)}
-                            id={`q-${qIdx}-opt-${optIdx}`}
-                            style={{ width: '17px', height: '17px', accentColor: '#10b981', cursor: 'pointer' }}
-                          />
-                          <label 
-                            htmlFor={`q-${qIdx}-opt-${optIdx}`}
-                            style={{ 
-                              fontWeight: 700, 
-                              color: isCorrect ? 'var(--success)' : 'var(--text-muted)',
+                  {q.type === 'true-false' ? (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '0.75rem'
+                    }}>
+                      {[
+                        { letter: 'A', text: 'True', val: 0 },
+                        { letter: 'B', text: 'False', val: 1 }
+                      ].map(tf => {
+                        const isCorrect = q.correctAnswer === tf.val;
+                        return (
+                          <div 
+                            key={tf.text}
+                            onClick={() => {
+                              handleQuestionChange(qIdx, 'correctAnswer', tf.val);
+                              const opts = [...q.options];
+                              opts[0] = 'True';
+                              opts[1] = 'False';
+                              handleQuestionChange(qIdx, 'options', opts);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.75rem',
+                              background: isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg-secondary)',
+                              border: `1.5px solid ${isCorrect ? 'var(--success)' : 'var(--border-default)'}`,
+                              borderRadius: 'var(--radius-md)',
+                              padding: '0.85rem 1.25rem',
                               cursor: 'pointer',
-                              minWidth: '18px'
+                              transition: 'all var(--transition-fast)'
                             }}
                           >
-                            {letter}:
-                          </label>
-                          <input
-                            type="text"
-                            className="form-input"
-                            placeholder={`Option ${letter} choice text...`}
-                            value={q.options[optIdx]}
-                            onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
+                            <input
+                              type="radio"
+                              name={`correct-${qIdx}`}
+                              checked={isCorrect}
+                              onChange={() => handleQuestionChange(qIdx, 'correctAnswer', tf.val)}
+                              id={`q-${qIdx}-opt-${tf.val}`}
+                              style={{ width: '18px', height: '18px', accentColor: '#10b981', cursor: 'pointer' }}
+                            />
+                            <label 
+                              htmlFor={`q-${qIdx}-opt-${tf.val}`}
+                              style={{ 
+                                fontWeight: 700, 
+                                fontSize: '1rem',
+                                color: isCorrect ? 'var(--success)' : 'var(--text-primary)',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Option {tf.letter}: {tf.text}
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                      gap: '0.75rem'
+                    }}>
+                      {['A', 'B', 'C', 'D'].map((letter, optIdx) => {
+                        const isCorrect = q.correctAnswer === optIdx;
+                        return (
+                          <div 
+                            key={letter}
                             style={{
-                              border: 'none',
-                              background: 'transparent',
-                              padding: '0.2rem',
-                              boxShadow: 'none',
-                              color: 'var(--text-primary)'
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.65rem',
+                              background: isCorrect ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-secondary)',
+                              border: `1px solid ${isCorrect ? 'var(--success)' : 'var(--border-default)'}`,
+                              borderRadius: 'var(--radius-md)',
+                              padding: '0.65rem 0.85rem',
+                              transition: 'all var(--transition-fast)'
                             }}
-                            required
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
+                          >
+                            <input
+                              type="radio"
+                              name={`correct-${qIdx}`}
+                              checked={isCorrect}
+                              onChange={() => handleQuestionChange(qIdx, 'correctAnswer', optIdx)}
+                              id={`q-${qIdx}-opt-${optIdx}`}
+                              style={{ width: '17px', height: '17px', accentColor: '#10b981', cursor: 'pointer' }}
+                            />
+                            <label 
+                              htmlFor={`q-${qIdx}-opt-${optIdx}`}
+                              style={{ 
+                                fontWeight: 700, 
+                                color: isCorrect ? 'var(--success)' : 'var(--text-muted)',
+                                cursor: 'pointer',
+                                minWidth: '18px'
+                              }}
+                            >
+                              {letter}:
+                            </label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder={`Option ${letter} choice text...`}
+                              value={q.options[optIdx] || ''}
+                              onChange={(e) => handleOptionChange(qIdx, optIdx, e.target.value)}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                padding: '0.2rem',
+                                boxShadow: 'none',
+                                color: 'var(--text-primary)'
+                              }}
+                              required
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Pedagogical Explanation */}
@@ -671,11 +966,11 @@ const CreateQuizPage = () => {
             <button
               type="button"
               onClick={handleAddQuestion}
-              disabled={questions.length >= 50}
+              disabled={questions.length >= 100}
               className="btn btn-secondary"
               style={{ padding: '0.75rem 1.75rem', gap: '0.5rem' }}
             >
-              <Plus size={18} /> Add Next Question ({questions.length + 1}/50)
+              <Plus size={18} /> Add Next Question ({questions.length + 1}/100)
             </button>
           </div>
         </div>
@@ -701,6 +996,10 @@ const CreateQuizPage = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Layers size={18} style={{ color: 'var(--gold)' }} />
               <span><strong>{questions.length}</strong> Questions</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Target size={18} style={{ color: 'var(--accent-indigo)' }} />
+              <span><strong>{totalPossibleMarks}</strong> Total Marks</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Clock size={18} style={{ color: 'var(--accent-cyan)' }} />
@@ -732,6 +1031,13 @@ const CreateQuizPage = () => {
           </div>
         </div>
       </form>
+
+      {/* Share Quiz Modal */}
+      <ShareQuizModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        quiz={createdQuizForShare}
+      />
     </div>
   );
 };

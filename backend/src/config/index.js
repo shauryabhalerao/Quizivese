@@ -1,7 +1,12 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-// Load environment variables from .env file
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Load environment variables reliably from backend/.env or root .env
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config(); // fallback to cwd .env if present
 
 export const config = {
   port: parseInt(process.env.PORT || '5000', 10),
@@ -36,6 +41,9 @@ export const config = {
 
   ai: {
     provider: process.env.AI_PROVIDER || 'gemini',
-    apiKey: process.env.AI_API_KEY || ''
+    apiKey: process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '',
+    model: process.env.GEMINI_MODEL || 'gemini-3.6-flash'
   }
 };
+
+

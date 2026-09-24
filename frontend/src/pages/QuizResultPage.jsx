@@ -22,20 +22,88 @@ import {
   Bot,
   BrainCircuit,
   ChevronDown,
-  Timer
+  Timer,
+  Share2,
+  Check
 } from 'lucide-react';
+import CertificateModal from '../components/CertificateModal';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 
 const QuizResultPage = () => {
   const { attemptId } = useParams();
   const navigate = useNavigate();
   const { getAttemptById } = useQuiz();
+  const { currentUser } = useAuth();
 
   const [attempt, setAttempt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedAi, setExpandedAi] = useState({});
+  const [aiLoading, setAiLoading] = useState({});
+  const [aiData, setAiData] = useState({});
+  const [isCertificateOpen, setIsCertificateOpen] = useState(false);
+  const [copiedShare, setCopiedShare] = useState(false);
 
-  const toggleAi = (idx) => {
-    setExpandedAi(prev => ({ ...prev, [idx]: !prev[idx] }));
+  const handleShareQuiz = () => {
+    if (!attempt?.quizId) return;
+    const quizUrl = `${window.location.origin}/quiz/${attempt.quizId}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(quizUrl);
+    } else {
+      const input = document.createElement('input');
+      input.value = quizUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+    }
+    setCopiedShare(true);
+    setTimeout(() => setCopiedShare(false), 2200);
+  };
+
+  const toggleAi = async (idx, item) => {
+    const isOpening = !expandedAi[idx];
+    setExpandedAi(prev => ({ ...prev, [idx]: isOpening }));
+
+    if (isOpening && !aiData[idx] && !aiLoading[idx] && item) {
+      setAiLoading(prev => ({ ...prev, [idx]: true }));
+      try {
+        const prompt = item.isCorrect 
+          ? "Explain why this answer is correct and why it is the optimal choice." 
+          : "Explain why my selected answer was wrong and why the correct answer is right.";
+        const res = await api.post('/ai/explain', {
+          questionText: item.questionText,
+          options: item.options || [],
+          selectedAnswer: item.selectedAnswer,
+          correctAnswer: item.correctAnswer ?? 0,
+          explanation: item.explanation || '',
+          userPrompt: prompt
+        });
+
+        const info = res?.data || res;
+        if (info && info.explanation) {
+          setAiData(prev => ({ ...prev, [idx]: info }));
+        } else {
+          setAiData(prev => ({
+            ...prev,
+            [idx]: {
+              explanation: item.explanation || 'Verified conceptual answer key.',
+              provider: 'Quiziverse AI System'
+            }
+          }));
+        }
+      } catch (err) {
+        setAiData(prev => ({
+          ...prev,
+          [idx]: {
+            explanation: item.explanation || 'Verified conceptual answer key.',
+            provider: 'Quiziverse Engine'
+          }
+        }));
+      } finally {
+        setAiLoading(prev => ({ ...prev, [idx]: false }));
+      }
+    }
   };
 
   useEffect(() => {
@@ -66,6 +134,27 @@ const QuizResultPage = () => {
     fetchAttempt();
     return () => { isMounted = false; };
   }, [attemptId]);
+
+  // Derive topic breakdown dynamically
+  const derivedTopicBreakdown = useMemo(() => {
+    if (attempt?.topicBreakdown && attempt.topicBreakdown.length > 0) {
+      return attempt.topicBreakdown;
+    }
+    if (!attempt?.breakdown) return [];
+    const map = {};
+    attempt.breakdown.forEach(item => {
+      const topic = item.topic || 'Core Concept';
+      if (!map[topic]) map[topic] = { total: 0, correct: 0 };
+      map[topic].total += 1;
+      if (item.isCorrect) map[topic].correct += 1;
+    });
+    return Object.entries(map).map(([topic, stats]) => ({
+      topic,
+      total: stats.total,
+      correct: stats.correct,
+      percentage: Math.round((stats.correct / stats.total) * 100)
+    })).sort((a, b) => a.percentage - b.percentage);
+  }, [attempt]);
 
   if (loading) {
     return (
@@ -106,27 +195,6 @@ const QuizResultPage = () => {
   };
 
   const performance = getPerformanceMessage(attempt.percentage);
-
-  // Derive topic breakdown dynamically
-  const derivedTopicBreakdown = useMemo(() => {
-    if (attempt?.topicBreakdown && attempt.topicBreakdown.length > 0) {
-      return attempt.topicBreakdown;
-    }
-    if (!attempt?.breakdown) return [];
-    const map = {};
-    attempt.breakdown.forEach(item => {
-      const topic = item.topic || 'Core Concept';
-      if (!map[topic]) map[topic] = { total: 0, correct: 0 };
-      map[topic].total += 1;
-      if (item.isCorrect) map[topic].correct += 1;
-    });
-    return Object.entries(map).map(([topic, stats]) => ({
-      topic,
-      total: stats.total,
-      correct: stats.correct,
-      percentage: Math.round((stats.correct / stats.total) * 100)
-    })).sort((a, b) => a.percentage - b.percentage);
-  }, [attempt]);
 
   const weakestTopic = derivedTopicBreakdown.length > 0
     ? derivedTopicBreakdown[0]
@@ -262,9 +330,55 @@ const QuizResultPage = () => {
         <div style={{ color: performance.color, fontSize: '1.4rem', fontWeight: 800, marginBottom: '0.5rem' }}>
           {performance.title}
         </div>
-        <p style={{ color: 'var(--text-muted)', maxWidth: 520, margin: '0 auto 2rem', fontSize: '0.95rem' }}>
+        <p style={{ color: 'var(--text-muted)', maxWidth: 520, margin: '0 auto 1.5rem', fontSize: '0.95rem' }}>
           {performance.desc}
         </p>
+
+        {/* Highlighted Marks & Performance Banner */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '2rem',
+          background: 'rgba(99, 102, 241, 0.12)',
+          border: '2px solid rgba(99, 102, 241, 0.35)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '1.25rem 2.5rem',
+          margin: '0 auto 2rem',
+          flexWrap: 'wrap'
+        }}>
+          <div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
+              Final Marks Awarded
+            </div>
+            <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--accent-indigo)' }}>
+              {attempt.marksObtained !== undefined ? attempt.marksObtained : (attempt.correctCount ?? attempt.score)}
+              <span style={{ fontSize: '1.2rem', color: 'var(--text-muted)', fontWeight: 600 }}> / {attempt.totalMarks || attempt.totalQuestions} Marks</span>
+            </div>
+          </div>
+
+          <div style={{ width: 1, height: 45, background: 'var(--border-default)' }} className="hide-mobile" />
+
+          <div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>
+              Assessment Outcome
+            </div>
+            <div style={{
+              fontSize: '1.5rem',
+              fontWeight: 800,
+              color: attempt.percentage >= 70 ? '#10b981' : '#f59e0b',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}>
+              {attempt.percentage >= 70 ? (
+                <><CheckCircle2 size={22} /> PASSED ({attempt.percentage}%)</>
+              ) : (
+                <><HelpCircle size={22} /> NEEDS PRACTICE ({attempt.percentage}%)</>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* Score Dial / Metrics */}
         <div style={{
@@ -287,21 +401,21 @@ const QuizResultPage = () => {
             <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#34d399' }}>
               {attempt.correctCount ?? attempt.score}
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Correct</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Correct (Right)</div>
           </div>
 
           <div>
             <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#f87171' }}>
               {attempt.incorrectCount ?? 0}
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Incorrect</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Incorrect (Wrong)</div>
           </div>
 
           <div>
             <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#94a3b8' }}>
               {attempt.unansweredCount ?? 0}
             </div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Unanswered</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Skipped / Empty</div>
           </div>
 
           <div>
@@ -328,6 +442,23 @@ const QuizResultPage = () => {
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          {attempt.percentage >= 70 && (
+            <button 
+              onClick={() => setIsCertificateOpen(true)} 
+              className="btn btn-gold"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}
+            >
+              <Award size={18} /> View Certificate
+            </button>
+          )}
+          <button
+            onClick={handleShareQuiz}
+            className={`btn ${copiedShare ? 'btn-easy' : 'btn-indigo'}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            {copiedShare ? <Check size={16} /> : <Share2 size={16} />}
+            <span>{copiedShare ? 'Link Copied!' : 'Share Quiz Link'}</span>
+          </button>
           <Link to={`/quiz/${attempt.quizId}`} className="btn btn-secondary">
             <RotateCcw size={16} /> Retake Quiz
           </Link>
@@ -438,16 +569,16 @@ const QuizResultPage = () => {
                   </span>
                   <div>
                     {isCorrect ? (
-                      <span className="badge badge-easy">
-                        <CheckCircle2 size={13} /> Correct (+1)
+                      <span className="badge badge-easy" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}>
+                        <CheckCircle2 size={15} /> Correct (+{item.marksAwarded ?? 1} Marks)
                       </span>
                     ) : isUnanswered ? (
-                      <span className="badge badge-gray">
-                        <HelpCircle size={13} /> Unanswered (0)
+                      <span className="badge badge-gray" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}>
+                        <HelpCircle size={15} /> Unanswered (0 Marks)
                       </span>
                     ) : (
-                      <span className="badge badge-hard">
-                        <XCircle size={13} /> Incorrect (0)
+                      <span className="badge badge-hard" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}>
+                        <XCircle size={15} /> Incorrect ({item.marksAwarded ? `${item.marksAwarded} Marks` : '0 Marks'})
                       </span>
                     )}
                   </div>
@@ -468,14 +599,30 @@ const QuizResultPage = () => {
                     let optionBg = 'var(--bg-secondary)';
                     let indicator = null;
 
-                    if (isOptionCorrect) {
-                      optionBorder = '1px solid #10b981';
-                      optionBg = 'rgba(16, 185, 129, 0.12)';
-                      indicator = <span style={{ color: '#34d399', fontSize: '0.8rem', fontWeight: 700 }}>✓ Correct Answer</span>;
+                    if (isOptionCorrect && isUserChoice) {
+                      optionBorder = '2px solid #10b981';
+                      optionBg = 'rgba(16, 185, 129, 0.16)';
+                      indicator = (
+                        <span style={{ color: '#10b981', fontSize: '0.85rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <CheckCircle2 size={14} /> Your Answer (✓ Correct! +{item.marksAwarded ?? 1} Marks)
+                        </span>
+                      );
+                    } else if (isOptionCorrect) {
+                      optionBorder = '2px solid #10b981';
+                      optionBg = 'rgba(16, 185, 129, 0.08)';
+                      indicator = (
+                        <span style={{ color: '#34d399', fontSize: '0.85rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <CheckCircle2 size={14} /> Correct Answer
+                        </span>
+                      );
                     } else if (isUserChoice && !isCorrect) {
-                      optionBorder = '1px solid #ef4444';
-                      optionBg = 'rgba(239, 68, 68, 0.12)';
-                      indicator = <span style={{ color: '#f87171', fontSize: '0.8rem', fontWeight: 700 }}>✕ Your Selection</span>;
+                      optionBorder = '2px solid #ef4444';
+                      optionBg = 'rgba(239, 68, 68, 0.14)';
+                      indicator = (
+                        <span style={{ color: '#f87171', fontSize: '0.85rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <XCircle size={14} /> Your Selection (✕ Wrong! {item.marksAwarded ? `${item.marksAwarded} Marks` : '0 Marks'})
+                        </span>
+                      );
                     }
 
                     return (
@@ -522,7 +669,7 @@ const QuizResultPage = () => {
                 <div>
                   <button
                     type="button"
-                    onClick={() => toggleAi(idx)}
+                    onClick={() => toggleAi(idx, item)}
                     className="btn btn-outline btn-sm"
                     style={{
                       display: 'inline-flex',
@@ -534,7 +681,7 @@ const QuizResultPage = () => {
                     }}
                   >
                     <Bot size={15} />
-                    <span>{isAiOpen ? 'Close AI Explanation Tutor' : 'Ask AI: Why is this answer correct?'}</span>
+                    <span>{isAiOpen ? 'Close AI Explanation Tutor' : isCorrect ? 'Ask AI: Why is this answer correct?' : 'Ask AI: Why was my answer wrong?'}</span>
                     <ChevronDown size={14} style={{ transform: isAiOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                   </button>
 
@@ -551,28 +698,44 @@ const QuizResultPage = () => {
                       gap: '0.75rem',
                       fontSize: '0.875rem'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#c084fc', fontWeight: 700 }}>
-                        <BrainCircuit size={17} />
-                        <span>AI Tutor Deep-Dive: {item.topic || 'Concept Evaluation'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#c084fc', fontWeight: 700 }}>
+                          <BrainCircuit size={17} />
+                          <span>AI Tutor Deep-Dive: {item.topic || 'Concept Evaluation'}</span>
+                        </div>
+                        {aiData[idx]?.provider && (
+                          <span className="badge badge-indigo" style={{ fontSize: '0.75rem' }}>
+                            Powered by {aiData[idx].provider}
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <strong style={{ color: 'var(--text-primary)' }}>🎯 Why Option {['A', 'B', 'C', 'D'][item.correctAnswer]} is Accurate: </strong>
-                        <span style={{ color: 'var(--text-secondary)' }}>
-                          {item.explanation} This aligns directly with verified academic standards and industry specifications for {item.topic || 'this subject'}.
-                        </span>
-                      </div>
-                      <div>
-                        <strong style={{ color: 'var(--text-primary)' }}>⚠️ Distractor Traps: </strong>
-                        <span style={{ color: 'var(--text-secondary)' }}>
-                          The alternative choices represent common misconceptions, deprecated patterns, or syntactically plausible but semantically flawed statements.
-                        </span>
-                      </div>
-                      <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #f59e0b' }}>
-                        <strong style={{ color: 'var(--gold)' }}>💡 Memory Key: </strong>
-                        <span style={{ color: 'var(--text-secondary)' }}>
-                          When facing similar questions, identify the invariant or core constraint first before evaluating complex secondary conditions.
-                        </span>
-                      </div>
+
+                      {aiLoading[idx] ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 0', color: 'var(--text-muted)' }}>
+                          <Loader2 size={20} className="spin" style={{ color: '#c084fc' }} />
+                          <span>Gemini AI Tutor is analyzing this question and synthesizing personalized explanation...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ whiteSpace: 'pre-line', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                            {aiData[idx]?.explanation || item.explanation || 'Verified conceptual rationale.'}
+                          </div>
+                          {!isCorrect && (
+                            <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #ef4444' }}>
+                              <strong style={{ color: '#f87171' }}>⚠️ Error Diagnostic: </strong>
+                              <span style={{ color: 'var(--text-secondary)' }}>
+                                You selected Option {['A', 'B', 'C', 'D'][item.selectedAnswer] || 'None'} ("{item.options?.[item.selectedAnswer] || 'Skipped'}"). The correct selection is Option {['A', 'B', 'C', 'D'][item.correctAnswer]} ("{item.options?.[item.correctAnswer]}").
+                              </span>
+                            </div>
+                          )}
+                          <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-sm)', borderLeft: '3px solid #f59e0b' }}>
+                            <strong style={{ color: 'var(--gold)' }}>💡 AI Learning Strategy: </strong>
+                            <span style={{ color: 'var(--text-secondary)' }}>
+                              Review the core definition for {item.topic || 'this question'} before attempting similar questions in upcoming quizzes.
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -581,6 +744,14 @@ const QuizResultPage = () => {
           })}
         </div>
       </div>
+
+      {/* Certificate Modal */}
+      <CertificateModal
+        isOpen={isCertificateOpen}
+        onClose={() => setIsCertificateOpen(false)}
+        attempt={attempt}
+        studentName={currentUser?.name}
+      />
     </div>
   );
 };

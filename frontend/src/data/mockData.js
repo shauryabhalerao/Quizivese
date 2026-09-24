@@ -6,6 +6,7 @@
 export const initialQuizzes = [
   {
     id: "quiz-web-dev-101",
+    quizCode: "WEB101",
     title: "Web Development Fundamentals",
     description: "Master modern HTML5 semantics, CSS Flexbox/Grid, responsive UI paradigms, and modern ES6+ JavaScript.",
     category: "Web Development",
@@ -72,6 +73,7 @@ export const initialQuizzes = [
   },
   {
     id: "quiz-programming-core",
+    quizCode: "PROG201",
     title: "Programming Core & OOP Concepts",
     description: "Deep dive into object-oriented principles, polymorphism, memory paradigms, and functional patterns in modern languages.",
     category: "Programming",
@@ -119,6 +121,7 @@ export const initialQuizzes = [
   },
   {
     id: "quiz-dsa-mastery",
+    quizCode: "DS301",
     title: "Data Structures & Algorithmic Thinking",
     description: "Challenge yourself with time complexities, binary search trees, hash table collisions, and graph traversal algorithms.",
     category: "DSA",
@@ -162,6 +165,7 @@ export const initialQuizzes = [
   },
   {
     id: "quiz-aptitude-quant",
+    quizCode: "QUANT401",
     title: "Quantitative Aptitude & Logical Reasoning",
     description: "Sharpen your analytical problem solving with probability, percentages, speed-distance-time, and logic puzzles.",
     category: "Aptitude",
@@ -204,6 +208,7 @@ export const initialQuizzes = [
   },
   {
     id: "quiz-general-knowledge",
+    quizCode: "GK101",
     title: "Daily World Trivia & General Knowledge",
     description: "Global geography, monumental historical events, scientific milestones, and world culture.",
     category: "General Knowledge",
@@ -247,6 +252,7 @@ export const initialQuizzes = [
   },
   {
     id: "quiz-science-physics-chem",
+    quizCode: "SCI201",
     title: "Physics, Chemistry & Space Exploration",
     description: "Explore atomic structures, thermodynamics, universal gravitation, and interstellar discoveries.",
     category: "Science",
@@ -280,6 +286,7 @@ export const initialQuizzes = [
   },
   {
     id: "quiz-ai-gen",
+    quizCode: "AI501",
     title: "Artificial Intelligence & Neural Networks",
     description: "Explore foundations of machine learning, loss functions, transformers, and deep learning architectures.",
     category: "Artificial Intelligence",
@@ -327,6 +334,7 @@ export const initialQuizzes = [
   },
   {
     id: "quiz-sql-databases",
+    quizCode: "SQL101",
     title: "SQL & Relational Database Mastery",
     description: "Master table JOINs, aggregations, indexing strategies, transactions (ACID), and schema constraints.",
     category: "SQL",
@@ -370,6 +378,7 @@ export const initialQuizzes = [
   },
   {
     id: "quiz-cs-core-os",
+    quizCode: "CS501",
     title: "Computer Science: OS & Networks",
     description: "Master process scheduling, deadlocks, virtual memory, TCP/IP stack layers, and networking protocols.",
     category: "Computer Science",
@@ -568,6 +577,23 @@ export const demoUsers = {
     rank: 6,
     quizzesAttempted: 12,
     averagePercentage: 86.5
+  },
+  teacher: {
+    id: "usr-tch-201",
+    name: "Prof. Sarah Lin",
+    email: "teacher@quiziverse.io",
+    role: "teacher",
+    grade: "Faculty Instructor",
+    department: "Computer Science & Engineering",
+    points: 5200,
+    xp: 9400,
+    level: 9,
+    streak: 12,
+    rank: 3,
+    quizzesCreated: 8,
+    totalStudentsTaught: 342,
+    quizzesAttempted: 24,
+    averagePercentage: 94.0
   },
   admin: {
     id: "usr-adm-001",

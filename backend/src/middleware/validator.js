@@ -135,13 +135,16 @@ export const validateAiGen = (req, res, next) => {
     errors.push({ field: 'difficulty', message: `Difficulty must be one of: ${validDifficulties.join(', ')}` });
   }
 
-  const countInput = numQuestions !== undefined ? numQuestions : (req.body.questionCount !== undefined ? req.body.questionCount : 5);
+  const countInput = req.body.numberOfQuestions !== undefined 
+    ? req.body.numberOfQuestions 
+    : (numQuestions !== undefined ? numQuestions : (req.body.questionCount !== undefined ? req.body.questionCount : 5));
   const qCount = parseInt(countInput, 10);
   if (isNaN(qCount) || qCount < 1 || qCount > 50) {
-    errors.push({ field: 'numQuestions', message: 'numQuestions must be an integer between 1 and 50' });
+    errors.push({ field: 'numQuestions', message: 'Question count must be an integer between 1 and 50' });
   } else {
     req.body.numQuestions = qCount;
     req.body.questionCount = qCount;
+    req.body.numberOfQuestions = qCount;
   }
 
   if (errors.length > 0) {
@@ -152,7 +155,7 @@ export const validateAiGen = (req, res, next) => {
 };
 
 /**
- * Validates quiz creation (Admin)
+ * Validates quiz creation (Admin / Teacher Manual Creator)
  */
 export const validateQuizCreate = (req, res, next) => {
   const errors = [];
@@ -185,8 +188,11 @@ export const validateQuizCreate = (req, res, next) => {
   }
 
   if (Array.isArray(questions)) {
-    if (questions.length > 50) {
-      errors.push({ field: 'questions', message: 'A quiz can have a maximum of 50 questions' });
+    if (questions.length > 100) {
+      errors.push({ field: 'questions', message: 'A quiz can have a maximum of 100 questions' });
+    }
+    if (questions.length === 0) {
+      errors.push({ field: 'questions', message: 'At least 1 question is required' });
     }
     if (questions.length > 0) {
       questions.forEach((q, idx) => {
@@ -209,3 +215,53 @@ export const validateQuizCreate = (req, res, next) => {
 
   next();
 };
+
+/**
+ * Validates forgot password request input
+ */
+export const validateForgotPassword = (req, res, next) => {
+  const errors = [];
+  let { email } = req.body || {};
+
+  if (typeof email === 'string') {
+    req.body.email = email.trim().toLowerCase();
+    email = req.body.email;
+  }
+
+  if (!email || !EMAIL_REGEX.test(email)) {
+    errors.push({ field: 'email', message: 'Please provide a valid registered email address' });
+  }
+
+  if (errors.length > 0) {
+    return next(new ApiError(400, 'Forgot password validation failed', errors));
+  }
+
+  next();
+};
+
+/**
+ * Validates reset password request input
+ */
+export const validateResetPassword = (req, res, next) => {
+  const errors = [];
+  const { token, password } = req.body || {};
+
+  if (!token || typeof token !== 'string' || token.trim().length === 0) {
+    errors.push({ field: 'token', message: 'Reset token is required' });
+  }
+
+  if (!password || typeof password !== 'string') {
+    errors.push({ field: 'password', message: 'New password is required' });
+  } else if (password.length < 6) {
+    errors.push({ field: 'password', message: 'Password must be at least 6 characters long' });
+  } else if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    errors.push({ field: 'password', message: 'Password must contain at least one letter and one number' });
+  }
+
+  if (errors.length > 0) {
+    return next(new ApiError(400, 'Password reset validation failed', errors));
+  }
+
+  next();
+};
+

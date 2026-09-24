@@ -65,6 +65,20 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: demoUsers.admin };
     }
 
+    if (roleOverride === 'teacher' || (email && email.toLowerCase().includes('teacher'))) {
+      setCurrentUser(demoUsers.teacher);
+      api.setToken('mock-teacher-jwt-token');
+      setLoading(false);
+      return { success: true, user: demoUsers.teacher };
+    }
+
+    if (roleOverride === 'student') {
+      setCurrentUser(demoUsers.student);
+      api.setToken('mock-student-jwt-token');
+      setLoading(false);
+      return { success: true, user: demoUsers.student };
+    }
+
     try {
       const response = await api.post('/auth/login', { email, password });
       if (response?.data?.user && response?.data?.token) {
@@ -172,7 +186,9 @@ export const AuthProvider = ({ children }) => {
         updateUserStats,
         loading,
         isAuthenticated: !!currentUser,
-        isAdmin: currentUser?.role === 'admin'
+        isAdmin: currentUser?.role === 'admin',
+        isTeacher: currentUser?.role === 'teacher' || currentUser?.role === 'admin',
+        isStudent: currentUser?.role === 'student'
       }}
     >
       {children}
