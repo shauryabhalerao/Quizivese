@@ -28,6 +28,11 @@ router.get('/health', async (req, res) => {
       latencyMs: dbHealth.latencyMs || null,
       target: `${dbHealth.host}/${dbHealth.database}`
     },
+    supabase: {
+      connected: true,
+      projectId: 'yikusqtmtfageekunycj',
+      url: 'https://yikusqtmtfageekunycj.supabase.co'
+    },
     memoryUsageMB: {
       rss: Math.round(memoryUsage.rss / 1024 / 1024),
       heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024),

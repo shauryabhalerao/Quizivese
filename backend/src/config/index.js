@@ -43,6 +43,12 @@ export const config = {
     provider: process.env.AI_PROVIDER || 'gemini',
     apiKey: process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '',
     model: process.env.GEMINI_MODEL || 'gemini-3.6-flash'
+  },
+
+  supabase: {
+    url: process.env.SUPABASE_URL || 'https://yikusqtmtfageekunycj.supabase.co',
+    key: process.env.SUPABASE_KEY || 'sb_publishable_8poTMoDD-dkEA_jRTje7Xg_O4U1FRTM',
+    projectId: process.env.SUPABASE_PROJECT_ID || 'yikusqtmtfageekunycj'
   }
 };
 

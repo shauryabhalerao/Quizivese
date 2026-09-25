@@ -3,7 +3,21 @@
  * Handles outbound requests, automatic JWT header injection, and response parsing.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
+const resolveBaseUrl = () => {
+  const envUrl = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '').trim();
+  if (envUrl) {
+    return envUrl.endsWith('/api') ? envUrl : `${envUrl.replace(/\/$/, '')}/api`;
+  }
+  // When running in production browser environment (e.g. Vercel deployment)
+  if (typeof window !== 'undefined' && window.location && window.location.hostname &&
+      !window.location.hostname.includes('localhost') && 
+      !window.location.hostname.includes('127.0.0.1')) {
+    return '/api';
+  }
+  return 'http://localhost:5001/api';
+};
+
+const API_BASE_URL = resolveBaseUrl();
 
 class ApiClient {
   constructor(baseUrl) {
@@ -50,7 +64,6 @@ class ApiClient {
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
-        // Handle 401 Unauthorized (Expired session)
         if (response.status === 401) {
           this.setToken(null);
         }
@@ -64,9 +77,10 @@ class ApiClient {
 
       return data;
     } catch (err) {
-      // If network fails (e.g. backend server is not running)
       if (!err.status) {
-        console.warn(`[NETWORK NOTICE] Could not connect to backend at ${url}. Operating with local state.`);
+        console.error(`[API NETWORK FAILURE] Unable to reach backend at "${url}". Verify backend server deployment, VITE_API_BASE_URL, and CORS settings.`);
+      } else {
+        console.error(`[API ERROR ${err.status}] Endpoint "${url}" failed:`, err.message);
       }
       throw err;
     }
