@@ -1,120 +1,225 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import supabase from '../services/supabase';
 import { api } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const savedToken = api.getToken();
-      const savedUser = localStorage.getItem('quiziverse_user');
-      if (savedToken && savedUser && savedUser !== 'undefined' && savedUser !== 'null') {
-        const parsed = JSON.parse(savedUser);
-        if (parsed && typeof parsed === 'object') {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('[AUTH RECOVERY] Resetting corrupted local user cache:', e);
-    }
-    return null;
-  });
-
+  const [currentUser, setCurrentUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Sync user state with localStorage (never store password)
+  // Sync Supabase Auth session & listener
   useEffect(() => {
-    try {
-      if (currentUser) {
-        // Strip any unexpected sensitive properties before persisting profile
-        const { password, password_hash, token, ...safeUser } = currentUser;
-        localStorage.setItem('quiziverse_user', JSON.stringify(safeUser));
-      } else {
-        localStorage.removeItem('quiziverse_user');
-      }
-    } catch (e) {
-      console.warn('[AUTH STORAGE] Could not persist user profile to localStorage:', e);
-    }
-  }, [currentUser]);
+    let mounted = true;
 
-  // Authenticate session on mount if token exists
-  useEffect(() => {
-    const token = api.getToken();
-    if (!token) {
-      setCurrentUser(null);
-      setLoading(false);
-      return;
-    }
+    // 1. Restore active Supabase session on mount
+    async function getInitialSession() {
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        if (error) console.warn('[Supabase Session Recovery Warning]:', error.message);
 
-    api.get('/auth/me')
-      .then(res => {
-        if (res?.data?.user) {
-          setCurrentUser(res.data.user);
+        if (mounted && initialSession?.user) {
+          setSession(initialSession);
+          api.setToken(initialSession.access_token);
+          await loadUserProfile(initialSession.user, initialSession.access_token);
         } else {
-          api.setToken(null);
-          setCurrentUser(null);
+          // Clear any legacy localStorage tokens
+          localStorage.removeItem('quiziverse_user');
+          localStorage.removeItem('quiziverse_token');
         }
-      })
-      .catch((err) => {
-        // If server returns 401/403 or invalid token, clear session
-        if (err.status === 401 || err.status === 403) {
-          api.setToken(null);
-          setCurrentUser(null);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      } catch (err) {
+        console.error('[AuthInit Error]:', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    getInitialSession();
+
+    // 2. Listen for Supabase Auth state changes (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log(`[Supabase Auth Event]: ${event}`);
+
+      if (currentSession?.user) {
+        setSession(currentSession);
+        api.setToken(currentSession.access_token);
+        await loadUserProfile(currentSession.user, currentSession.access_token);
+      } else {
+        setSession(null);
+        setCurrentUser(null);
+        api.setToken(null);
+        localStorage.removeItem('quiziverse_user');
+        localStorage.removeItem('quiziverse_token');
+      }
+      setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe();
+    };
   }, []);
 
+  // Helper to construct / fetch user profile
+  const loadUserProfile = async (sbUser, accessToken) => {
+    try {
+      // Attempt backend me endpoint
+      const res = await api.get('/auth/me');
+      if (res?.data?.user) {
+        setCurrentUser(res.data.user);
+        return;
+      }
+    } catch (err) {
+      // Backend offline or me route unreachable - construct profile from Supabase user metadata
+    }
+
+    const fallbackProfile = {
+      id: sbUser.id,
+      name: sbUser.user_metadata?.name || sbUser.email?.split('@')[0] || 'Student',
+      email: sbUser.email,
+      role: sbUser.user_metadata?.role || 'student',
+      grade: sbUser.user_metadata?.grade || 'Undergraduate',
+      points: 100,
+      xp: 200,
+      level: 1,
+      current_streak: 1,
+      created_at: sbUser.created_at
+    };
+
+    setCurrentUser(fallbackProfile);
+  };
+
+  // Login via Supabase Auth
   const login = async (email, password) => {
     setLoading(true);
-
     try {
-      const response = await api.post('/auth/login', { email, password });
-      if (response?.data?.user && response?.data?.token) {
-        api.setToken(response.data.token);
-        const { password_hash, password, ...safeUser } = response.data.user;
-        setCurrentUser(safeUser);
-        setLoading(false);
-        return { success: true, user: safeUser };
+      // 1. Direct Supabase Auth login
+      const { data: sbData, error: sbErr } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password
+      });
+
+      if (sbErr) {
+        // If Supabase client fails, try backend API endpoint
+        const apiRes = await api.post('/auth/login', { email, password });
+        if (apiRes?.data?.user) {
+          if (apiRes.data.token) api.setToken(apiRes.data.token);
+          setCurrentUser(apiRes.data.user);
+          setLoading(false);
+          return { success: true, user: apiRes.data.user };
+        }
+        throw new Error(sbErr.message || 'Invalid email or password.');
       }
-      throw new Error(response?.message || 'Invalid email or password.');
+
+      const sbUser = sbData.user;
+      const sbSession = sbData.session;
+
+      if (sbSession) {
+        setSession(sbSession);
+        api.setToken(sbSession.access_token);
+      }
+
+      await loadUserProfile(sbUser, sbSession?.access_token);
+      setLoading(false);
+      return { success: true, user: currentUser };
     } catch (err) {
       setLoading(false);
-      const friendlyMessage = err.status === 401 
-        ? 'Invalid email or password.' 
+      const friendlyMsg = err.message?.includes('Invalid login credentials') || err.status === 401
+        ? 'Invalid email or password.'
         : (err.message || 'Failed to sign in. Please try again.');
-      return { success: false, error: friendlyMessage };
+      return { success: false, error: friendlyMsg };
     }
   };
 
+  // Register via Supabase Auth
   const register = async ({ name, email, password, grade }) => {
     setLoading(true);
-
     try {
-      const response = await api.post('/auth/register', { name, email, password, grade });
-      if (response?.data?.user && response?.data?.token) {
-        api.setToken(response.data.token);
-        const { password_hash, password, ...safeUser } = response.data.user;
-        setCurrentUser(safeUser);
-        setLoading(false);
-        return { success: true, user: safeUser };
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // 1. Direct Supabase Auth signUp
+      const { data: sbData, error: sbErr } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            name: name.trim(),
+            grade
+          }
+        }
+      });
+
+      if (sbErr) {
+        console.warn('[Supabase Register Error]:', sbErr);
+        if (sbErr.status === 429 || sbErr.code === 'over_email_send_rate_limit') {
+          throw new Error('Too many signup emails have been requested. Please wait a while and try again.');
+        }
+        if (sbErr.status === 422 || sbErr.message?.includes('already registered')) {
+          throw new Error('An account with this email address already exists.');
+        }
+
+        // Try backend API registration endpoint
+        const apiRes = await api.post('/auth/register', { name, email, password, grade });
+        if (apiRes?.data?.user) {
+          if (apiRes.data.token) api.setToken(apiRes.data.token);
+          setCurrentUser(apiRes.data.user);
+          setLoading(false);
+          return { success: true, user: apiRes.data.user };
+        }
+
+        throw new Error(sbErr.message || 'Unable to create your account.');
       }
-      throw new Error(response?.message || 'Registration failed.');
+
+      if (!sbData?.user) {
+        throw new Error('Unable to create your account. Please try again.');
+      }
+
+      // Also inform backend to sync profile
+      try {
+        await api.post('/auth/register', { name, email, password, grade });
+      } catch (e) {
+        // Non-critical if backend sync fails as Supabase Auth succeeded
+      }
+
+      const sbUser = sbData.user;
+      const sbSession = sbData.session;
+
+      if (sbSession) {
+        setSession(sbSession);
+        api.setToken(sbSession.access_token);
+        await loadUserProfile(sbUser, sbSession.access_token);
+      } else {
+        // Email confirmation is required by Supabase project settings
+        setLoading(false);
+        return {
+          success: true,
+          emailConfirmationRequired: true,
+          message: 'Account created! Please check your email inbox to confirm your account.'
+        };
+      }
+
+      setLoading(false);
+      return { success: true, user: currentUser };
     } catch (err) {
       setLoading(false);
-      const friendlyMessage = err.status === 409
-        ? 'An account with this email address already exists.'
-        : (err.message || 'Registration failed. Please try again.');
-      return { success: false, error: friendlyMessage };
+      return { success: false, error: err.message || 'Registration failed. Please try again.' };
     }
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    api.setToken(null);
-    localStorage.removeItem('quiziverse_user');
+  // Logout via Supabase Auth
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('[Supabase SignOut Notice]:', e);
+    } finally {
+      setSession(null);
+      setCurrentUser(null);
+      api.setToken(null);
+      localStorage.removeItem('quiziverse_user');
+      localStorage.removeItem('quiziverse_token');
+    }
   };
 
   const updateUserStats = (pointsEarned, xpEarned, percentage, gamification = null) => {
@@ -156,12 +261,13 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         currentUser,
+        session,
         login,
         register,
         logout,
         updateUserStats,
         loading,
-        isAuthenticated: !!currentUser,
+        isAuthenticated: !!currentUser || !!session,
         isAdmin: currentUser?.role === 'admin',
         isTeacher: currentUser?.role === 'teacher' || currentUser?.role === 'admin',
         isStudent: currentUser?.role === 'student' || !currentUser?.role

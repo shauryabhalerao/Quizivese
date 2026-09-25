@@ -3,6 +3,8 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Sparkles, Lock, Eye, EyeOff, AlertCircle, CheckCircle, ArrowRight, KeyRound, ArrowLeft } from 'lucide-react';
 import { api } from '../services/api';
 
+import supabase from '../services/supabase';
+
 const ResetPasswordPage = () => {
   const [searchParams] = useSearchParams();
   const urlToken = searchParams.get('token') || '';
@@ -24,11 +26,6 @@ const ResetPasswordPage = () => {
     if (isSubmitting || isSuccess) return;
     setError('');
 
-    if (!activeToken) {
-      setError('Please enter your 6-digit code or reset token.');
-      return;
-    }
-
     if (!password || password.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
@@ -46,21 +43,26 @@ const ResetPasswordPage = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post('/auth/reset-password', { 
-        token: activeToken, 
-        password 
+      const { data, error: sbErr } = await supabase.auth.updateUser({
+        password: password
       });
 
-      if (response?.success || response?.status === 200) {
-        setIsSuccess(true);
+      if (sbErr) {
+        // Fallback to API reset password
+        const response = await api.post('/auth/reset-password', { 
+          token: activeToken, 
+          password 
+        });
+        if (response?.success) {
+          setIsSuccess(true);
+        } else {
+          throw new Error(sbErr.message || 'Failed to update password.');
+        }
       } else {
-        throw new Error(response?.message || 'Failed to update password.');
+        setIsSuccess(true);
       }
     } catch (err) {
-      const msg = err.status === 400 || err.status === 404
-        ? 'Invalid or expired password reset token / code.'
-        : (err.message || 'Failed to update password. Please try again.');
-      setError(msg);
+      setError(err.message || 'Failed to update password. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

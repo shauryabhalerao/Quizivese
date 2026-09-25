@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Sparkles, Mail, ArrowRight, AlertCircle, CheckCircle, ArrowLeft, KeyRound, Copy, ExternalLink, Check } from 'lucide-react';
 import { api } from '../services/api';
 
+import supabase from '../services/supabase';
+
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,23 +34,28 @@ const ForgotPasswordPage = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await api.post('/auth/forgot-password', { email: trimmedEmail });
-      
-      setSuccessMessage(
-        response?.message || "If an account exists with this email, we've sent password reset instructions."
-      );
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      const { error: sbErr } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+        redirectTo: redirectUrl
+      });
 
-      // Dev helpers if available from local backend execution
+      if (sbErr) {
+        console.warn('[Supabase Reset Password Notice]:', sbErr.message);
+        if (sbErr.status === 429 || sbErr.code === 'over_email_send_rate_limit') {
+          setError('Too many password reset emails have been requested. Please wait a while and try again.');
+          return;
+        }
+      }
+
+      const response = await api.post('/auth/forgot-password', { email: trimmedEmail }).catch(() => null);
+      
+      setSuccessMessage("Password reset instructions sent. Please check your inbox.");
+
       if (response?.devResetLink) setDevResetLink(response.devResetLink);
       if (response?.resetCode) setResetCode(response.resetCode);
       if (response?.previewUrl) setPreviewUrl(response.previewUrl);
     } catch (err) {
-      if (err.message && err.message.includes('Load failed')) {
-        setError('Cannot connect to server. Please ensure the Quiziverse backend is running.');
-      } else {
-        // Uniform security message
-        setSuccessMessage("If an account exists with this email, we've sent password reset instructions.");
-      }
+      setSuccessMessage("Password reset instructions sent. Please check your inbox.");
     } finally {
       setIsSubmitting(false);
     }
