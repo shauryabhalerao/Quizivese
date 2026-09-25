@@ -70,8 +70,9 @@ app.get('/', (req, res) => {
   });
 });
 
-// API Routes
+// API Routes (Supported at both /api and / for Vercel Serverless Functions)
 app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
 // 404 & Error Handlers
 app.use(notFoundHandler);
