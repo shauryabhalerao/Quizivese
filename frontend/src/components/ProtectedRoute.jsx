@@ -4,8 +4,18 @@ import { useAuth } from '../context/AuthContext';
 import { ShieldAlert } from 'lucide-react';
 
 const ProtectedRoute = ({ children, requireAdmin = false, requireTeacher = false }) => {
-  const { currentUser, isAuthenticated, isAdmin, isTeacher } = useAuth();
+  const { currentUser, isAuthenticated, isAdmin, isTeacher, loading } = useAuth();
   const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="container" style={{ padding: '6rem 1rem', textAlign: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem', color: 'var(--accent-indigo)', fontWeight: 600 }}>
+          Verifying authentication session...
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;

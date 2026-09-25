@@ -443,7 +443,7 @@ const AiQuizGenPage = () => {
                   <strong>Troubleshooting Checklist:</strong>
                   <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0 }}>
                     <li>Ensure <code style={{ color: 'var(--gold)' }}>GEMINI_API_KEY</code> is set in <code style={{ color: 'var(--gold)' }}>backend/.env</code>.</li>
-                    <li>Verify configured Gemini model (<code style={{ color: 'var(--gold)' }}>{aiStatus?.model || 'gemini-2.5-flash'}</code>) is accessible with your API key.</li>
+                    <li>Verify configured Gemini model (<code style={{ color: 'var(--gold)' }}>{aiStatus?.model || 'gemini-3.6-flash'}</code>) is accessible with your API key.</li>
                     <li>Ensure Quiziverse backend server is running on port 5001.</li>
                   </ul>
                 </div>

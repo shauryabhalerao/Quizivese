@@ -42,7 +42,7 @@ export const config = {
   ai: {
     provider: process.env.AI_PROVIDER || 'gemini',
     apiKey: process.env.GEMINI_API_KEY || process.env.AI_API_KEY || '',
-    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+    model: process.env.GEMINI_MODEL || 'gemini-3.6-flash'
   }
 };
 

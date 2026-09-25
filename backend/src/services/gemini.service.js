@@ -23,15 +23,14 @@ try {
 export class GeminiService {
   constructor() {
     this.apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || config.ai.apiKey || '';
-    this.configuredModel = process.env.GEMINI_MODEL || config.ai.model || 'gemini-2.5-flash';
+    this.configuredModel = process.env.GEMINI_MODEL || config.ai.model || 'gemini-3.6-flash';
     
-    // Ordered candidate list focusing on active Gemini models
+    // Ordered candidate list of verified active Gemini models
     const candidates = [
       this.configuredModel,
-      'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
-      'gemini-2.0-flash-lite'
+      'gemini-3.6-flash',
+      'gemini-flash-latest',
+      'gemini-3.1-flash-lite'
     ];
     this.modelCandidates = Array.from(new Set(candidates.filter(Boolean)));
 
@@ -46,7 +45,7 @@ export class GeminiService {
 
   isKeyConfigured() {
     const key = (process.env.GEMINI_API_KEY || process.env.AI_API_KEY || config.ai.apiKey || '').trim();
-    return !!(key && !key.includes('your_') && !key.startsWith('AQ.') && key.length > 15);
+    return !!(key && !key.includes('your_') && key.length > 15);
   }
 
   getStatus() {
@@ -70,7 +69,7 @@ export class GeminiService {
     const sleep = ms => new Promise(r => setTimeout(r, ms));
 
     for (const modelName of this.modelCandidates) {
-      for (let attempt = 1; attempt <= 2; attempt++) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
         try {
           console.log(`[AI] Gemini request started with model '${modelName}' (Attempt ${attempt})...`);
           const response = await ai.models.generateContent({
@@ -104,8 +103,8 @@ export class GeminiService {
           }
 
           const is503 = err.status === 503 || (err.message && (err.message.includes('503') || err.message.includes('high demand') || err.message.includes('UNAVAILABLE')));
-          if (is503 && attempt === 1) {
-            await sleep(1000);
+          if (is503 && attempt < 3) {
+            await sleep(attempt * 1000);
           }
         }
       }

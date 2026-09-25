@@ -40,6 +40,7 @@ function App() {
                 <Route path="/" element={<HomePage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/signup" element={<RegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route path="/quizzes" element={<QuizzesPage />} />
@@ -59,7 +60,23 @@ function App() {
                 } 
               />
               <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
                 path="/history" 
+                element={
+                  <ProtectedRoute>
+                    <HistoryPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/my-quizzes" 
                 element={
                   <ProtectedRoute>
                     <HistoryPage />

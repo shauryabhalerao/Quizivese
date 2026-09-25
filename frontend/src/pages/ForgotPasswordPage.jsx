@@ -1,19 +1,14 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Mail, ArrowRight, AlertCircle, CheckCircle, ArrowLeft, Copy, ExternalLink, Check, Terminal, KeyRound } from 'lucide-react';
-
-const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
-const API_BASE_URL = rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/$/, '')}/api`;
+import { Link } from 'react-router-dom';
+import { Sparkles, Mail, ArrowRight, AlertCircle, CheckCircle, ArrowLeft, KeyRound, Copy, ExternalLink, Check } from 'lucide-react';
+import { api } from '../services/api';
 
 const ForgotPasswordPage = () => {
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [emailSent, setEmailSent] = useState(null);
   const [devResetLink, setDevResetLink] = useState('');
-  const [resetToken, setResetToken] = useState('');
   const [resetCode, setResetCode] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -21,49 +16,38 @@ const ForgotPasswordPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setError('');
     setSuccessMessage('');
     setDevResetLink('');
-    setResetToken('');
     setResetCode('');
     setPreviewUrl('');
 
     const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail || !trimmedEmail.includes('@')) {
-      setError('Please enter a valid email address');
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      setError('Please enter a valid email address.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail })
-      });
+      const response = await api.post('/auth/forgot-password', { email: trimmedEmail });
+      
+      setSuccessMessage(
+        response?.message || "If an account exists with this email, we've sent password reset instructions."
+      );
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to send password reset request');
-      }
-
-      const emailSentVal = data.emailSent !== undefined ? data.emailSent : (data.data?.emailSent ?? false);
-      const link = data.devResetLink || data.data?.devResetLink || '';
-      const code = data.resetCode || data.data?.resetCode || '';
-      const etherealUrl = data.previewUrl || data.data?.previewUrl || '';
-
-      setEmailSent(emailSentVal);
-      if (link) setDevResetLink(link);
-      if (code) setResetCode(code);
-      if (etherealUrl) setPreviewUrl(etherealUrl);
-
-      setSuccessMessage(data.message || 'Password reset code generated.');
+      // Dev helpers if available from local backend execution
+      if (response?.devResetLink) setDevResetLink(response.devResetLink);
+      if (response?.resetCode) setResetCode(response.resetCode);
+      if (response?.previewUrl) setPreviewUrl(response.previewUrl);
     } catch (err) {
       if (err.message && err.message.includes('Load failed')) {
-        setError('Cannot connect to API server. Please ensure the backend engine (http://localhost:5001) is running.');
+        setError('Cannot connect to server. Please ensure the Quiziverse backend is running.');
       } else {
-        setError(err.message || 'An error occurred while processing your request');
+        // Uniform security message
+        setSuccessMessage("If an account exists with this email, we've sent password reset instructions.");
       }
     } finally {
       setIsSubmitting(false);
@@ -84,93 +68,102 @@ const ForgotPasswordPage = () => {
 
     if (type === 'link') {
       setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2200);
+      setTimeout(() => setCopiedLink(false), 2000);
     } else if (type === 'code') {
       setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2200);
+      setTimeout(() => setCopiedCode(false), 2000);
     }
   };
 
   return (
-    <div className="container-narrow" style={{ padding: '3rem 1rem' }}>
-      <div className="card glass-card" style={{ maxWidth: 500, margin: '0 auto' }}>
-        {/* Header */}
+    <div className="container-narrow" style={{ padding: '3.5rem 1rem' }}>
+      <div className="card glass-card" style={{ maxWidth: 480, margin: '0 auto', padding: '2.5rem 2rem' }}>
+        {/* Header Branding */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{
-            background: 'var(--gradient-brand)',
-            width: 48,
-            height: 48,
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            margin: '0 auto 1rem',
-            boxShadow: 'var(--glow-brand)'
-          }}>
-            <Sparkles size={24} />
-          </div>
-          <h2 style={{ fontSize: '1.75rem', marginBottom: '0.4rem' }}>Forgot Password</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Enter your registered email address to receive a single-use password reset link and 6-digit code.
+          <Link to="/" style={{ textDecoration: 'none', display: 'inline-block' }}>
+            <div style={{
+              background: 'var(--gradient-brand)',
+              width: 52,
+              height: 52,
+              borderRadius: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              margin: '0 auto 1.25rem',
+              boxShadow: 'var(--glow-brand)'
+            }}>
+              <Sparkles size={26} />
+            </div>
+          </Link>
+          <h1 style={{ fontSize: '1.85rem', fontWeight: 800, marginBottom: '0.4rem', color: 'var(--text-primary)' }}>
+            Reset your password
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.925rem', margin: 0 }}>
+            Enter your registered email address to receive password reset instructions.
           </p>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div style={{
-            background: 'var(--danger-bg)',
-            border: '1px solid var(--danger)',
-            color: '#f87171',
-            padding: '0.75rem 1rem',
-            borderRadius: 'var(--radius-md)',
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            fontSize: '0.875rem'
-          }}>
-            <AlertCircle size={18} style={{ flexShrink: 0 }} />
+          <div 
+            role="alert"
+            style={{
+              background: 'var(--danger-bg)',
+              border: '1px solid var(--danger)',
+              color: '#f87171',
+              padding: '0.85rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '1.35rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              fontSize: '0.88rem'
+            }}
+          >
+            <AlertCircle size={19} style={{ flexShrink: 0 }} />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Success Alert */}
+        {/* Friendly Success Confirmation Message */}
         {successMessage && (
-          <div style={{
-            background: 'var(--success-bg)',
-            border: '1px solid var(--success)',
-            color: '#34d399',
-            padding: '0.85rem 1rem',
-            borderRadius: 'var(--radius-md)',
-            marginBottom: '1.25rem',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.65rem',
-            fontSize: '0.875rem',
-            lineHeight: 1.5
-          }}>
+          <div 
+            style={{
+              background: 'var(--success-bg)',
+              border: '1px solid var(--success)',
+              color: '#34d399',
+              padding: '0.95rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              marginBottom: '1.35rem',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.65rem',
+              fontSize: '0.88rem',
+              lineHeight: 1.5
+            }}
+          >
             <CheckCircle size={20} style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
-              <strong>Reset Request Processed</strong>
-              <p style={{ margin: '4px 0 0', opacity: 0.9 }}>{successMessage}</p>
+              <strong>Request Sent</strong>
+              <p style={{ margin: '3px 0 0', opacity: 0.95 }}>{successMessage}</p>
             </div>
           </div>
         )}
 
-        {/* 6-DIGIT CODE DISPLAY BOX */}
+        {/* Interactive Verification Code Box (Local Dev Support) */}
         {resetCode && (
           <div style={{
-            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(56, 189, 248, 0.15))',
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(56, 189, 248, 0.12))',
             border: '1px solid var(--accent-indigo)',
-            borderRadius: 'var(--radius-lg)',
+            borderRadius: 'var(--radius-md)',
             padding: '1.25rem',
-            marginBottom: '1.25rem',
+            marginBottom: '1.35rem',
             textAlign: 'center'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--accent-indigo)', fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-              <KeyRound size={18} />
-              <span>Your 6-Digit Verification Code</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: 'var(--accent-indigo)', fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.4rem' }}>
+              <KeyRound size={17} />
+              <span>Verification Code Generated</span>
             </div>
 
             <div style={{
@@ -179,8 +172,8 @@ const ForgotPasswordPage = () => {
               fontFamily: 'monospace',
               letterSpacing: '8px',
               color: '#38bdf8',
-              margin: '0.5rem 0 1rem',
-              textShadow: '0 0 12px rgba(56, 189, 248, 0.4)'
+              margin: '0.4rem 0 1rem',
+              textShadow: '0 0 10px rgba(56, 189, 248, 0.3)'
             }}>
               {resetCode}
             </div>
@@ -189,136 +182,112 @@ const ForgotPasswordPage = () => {
               <button
                 type="button"
                 onClick={() => copyToClipboard(resetCode, 'code')}
-                className={`btn ${copiedCode ? 'btn-easy' : 'btn-indigo'} btn-sm`}
+                className="btn btn-secondary btn-sm"
                 style={{ flex: 1, justifyContent: 'center' }}
               >
-                {copiedCode ? <Check size={15} /> : <Copy size={15} />}
-                <span>{copiedCode ? 'Copied Code!' : 'Copy Code'}</span>
+                {copiedCode ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copiedCode ? 'Copied' : 'Copy Code'}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigate(`/reset-password?token=${resetCode}`)}
+              <Link
+                to={`/reset-password?token=${resetCode}`}
                 className="btn btn-primary btn-sm"
-                style={{ flex: 1.2, justifyContent: 'center' }}
+                style={{ flex: 1.2, justifyContent: 'center', textDecoration: 'none' }}
               >
-                Reset Password Now <ArrowRight size={15} />
-              </button>
+                <span>Reset Password</span>
+                <ArrowRight size={14} />
+              </Link>
             </div>
           </div>
         )}
 
-        {/* Ethereal Mail Preview Box (if generated) */}
+        {/* Ethereal Inbox Link if available */}
         {previewUrl && (
           <div style={{
             background: 'rgba(245, 158, 11, 0.1)',
-            border: '1px solid rgba(245, 158, 11, 0.4)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
             borderRadius: 'var(--radius-md)',
             padding: '0.85rem 1rem',
-            marginBottom: '1.25rem',
+            marginBottom: '1.35rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '0.5rem'
           }}>
             <div style={{ fontSize: '0.825rem', color: 'var(--gold)' }}>
-              <strong>Ethereal Email Inbox Preview</strong>
-              <div style={{ opacity: 0.8, fontSize: '0.75rem' }}>View actual rendered HTML test email online</div>
+              <strong>Ethereal Test Mail Inbox</strong>
             </div>
             <a
               href={previewUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-gold btn-sm"
-              style={{ textDecoration: 'none', whiteSpace: 'nowrap' }}
+              style={{ textDecoration: 'none' }}
             >
-              <ExternalLink size={14} /> Open Inbox
+              <ExternalLink size={14} /> View Email
             </a>
           </div>
         )}
 
-        {/* Development Reset Link Section (LOCAL DEVELOPMENT ONLY) */}
-        {devResetLink && (
-          <div style={{
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '1rem',
-            marginBottom: '1.5rem'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.825rem', marginBottom: '0.35rem' }}>
-              <Terminal size={16} />
-              <span>Direct Reset Link URL</span>
-            </div>
-
-            <div style={{ marginBottom: '0.65rem' }}>
-              <input
-                type="text"
-                readOnly
-                value={devResetLink}
-                className="form-input"
-                style={{ fontSize: '0.75rem', fontFamily: 'monospace', background: 'var(--bg-card)', color: 'var(--accent-indigo)' }}
-                onClick={(e) => e.target.select()}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(devResetLink, 'link')}
-                className={`btn ${copiedLink ? 'btn-easy' : 'btn-outline'} btn-sm`}
-                style={{ flex: 1, justifyContent: 'center' }}
-              >
-                {copiedLink ? <Check size={14} /> : <Copy size={14} />}
-                <span>{copiedLink ? 'Copied Link!' : 'Copy Direct Link'}</span>
-              </button>
-
-              <a
-                href={devResetLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-outline btn-sm"
-                style={{ flex: 1, justifyContent: 'center', textDecoration: 'none' }}
-              >
-                <ExternalLink size={14} /> Open Direct Link
-              </a>
-            </div>
-          </div>
-        )}
-
         {/* Form */}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
-            <label className="form-label" htmlFor="reset-email">Registered Email Address</label>
+            <label className="form-label" htmlFor="reset-email">
+              Email Address
+            </label>
             <div style={{ position: 'relative' }}>
               <input
                 id="reset-email"
                 type="email"
                 className="form-input"
-                placeholder="student@quiziverse.io"
+                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={{ paddingLeft: '2.5rem' }}
+                autoComplete="email"
                 required
+                disabled={isSubmitting}
+                style={{ paddingLeft: '2.6rem' }}
               />
-              <Mail size={18} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
+              <Mail 
+                size={18} 
+                aria-hidden="true"
+                style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} 
+              />
             </div>
           </div>
 
           <button
             type="submit"
             className="btn btn-primary"
-            style={{ width: '100%', marginTop: '0.75rem', padding: '0.85rem' }}
+            style={{ 
+              width: '100%', 
+              marginTop: '0.85rem', 
+              padding: '0.9rem', 
+              fontSize: '1rem',
+              fontWeight: 700,
+              justifyContent: 'center',
+              gap: '0.5rem'
+            }}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Sending Link & Code...' : 'Send Reset Link & Code'} <ArrowRight size={16} />
+            {isSubmitting ? (
+              <>
+                <Sparkles size={18} className="spin" />
+                <span>Sending Instructions…</span>
+              </>
+            ) : (
+              <>
+                <span>Send Reset Link</span>
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
         </form>
 
-        {/* Footer Back Link */}
-        <div style={{ textAlign: 'center', marginTop: '1.75rem', fontSize: '0.9rem' }}>
-          <Link to="/login" style={{ color: 'var(--accent-indigo)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-            <ArrowLeft size={16} /> Back to Sign In
+        {/* Footer Link */}
+        <div style={{ textAlign: 'center', marginTop: '2rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-subtle)', fontSize: '0.9rem' }}>
+          <Link to="/login" style={{ color: 'var(--accent-indigo)', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            <ArrowLeft size={16} /> Back to Login
           </Link>
         </div>
       </div>
@@ -327,4 +296,3 @@ const ForgotPasswordPage = () => {
 };
 
 export default ForgotPasswordPage;
-

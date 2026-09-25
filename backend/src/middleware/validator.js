@@ -42,11 +42,11 @@ export const validateRegister = (req, res, next) => {
     errors.push({ field: 'email', message: 'Please provide a valid email address (e.g. student@school.edu)' });
   }
 
-  // Password validation: minimum 6 chars, at least 1 letter and 1 number
+  // Password validation: minimum 8 chars, at least 1 letter and 1 number
   if (!password || typeof password !== 'string') {
     errors.push({ field: 'password', message: 'Password is required' });
-  } else if (password.length < 6) {
-    errors.push({ field: 'password', message: 'Password must be at least 6 characters long' });
+  } else if (password.length < 8) {
+    errors.push({ field: 'password', message: 'Password must be at least 8 characters long' });
   } else if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
     errors.push({ field: 'password', message: 'Password must contain at least one letter and one number' });
   }
@@ -252,8 +252,8 @@ export const validateResetPassword = (req, res, next) => {
 
   if (!password || typeof password !== 'string') {
     errors.push({ field: 'password', message: 'New password is required' });
-  } else if (password.length < 6) {
-    errors.push({ field: 'password', message: 'Password must be at least 6 characters long' });
+  } else if (password.length < 8) {
+    errors.push({ field: 'password', message: 'Password must be at least 8 characters long' });
   } else if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
     errors.push({ field: 'password', message: 'Password must contain at least one letter and one number' });
   }

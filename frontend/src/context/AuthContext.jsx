@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { demoUsers } from '../data/mockData';
 import { api } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -7,99 +6,87 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
-      const saved = localStorage.getItem('quiziverse_user');
-      if (saved && saved !== 'undefined' && saved !== 'null') {
-        const parsed = JSON.parse(saved);
+      const savedToken = api.getToken();
+      const savedUser = localStorage.getItem('quiziverse_user');
+      if (savedToken && savedUser && savedUser !== 'undefined' && savedUser !== 'null') {
+        const parsed = JSON.parse(savedUser);
         if (parsed && typeof parsed === 'object') {
-          return {
-            ...demoUsers.student,
-            ...parsed,
-            name: parsed.name || demoUsers.student.name
-          };
+          return parsed;
         }
       }
     } catch (e) {
       console.warn('[AUTH RECOVERY] Resetting corrupted local user cache:', e);
     }
-    return demoUsers.student;
+    return null;
   });
-  const [loading, setLoading] = useState(false);
 
+  const [loading, setLoading] = useState(true);
+
+  // Sync user state with localStorage (never store password)
   useEffect(() => {
     try {
       if (currentUser) {
-        localStorage.setItem('quiziverse_user', JSON.stringify(currentUser));
+        // Strip any unexpected sensitive properties before persisting profile
+        const { password, password_hash, token, ...safeUser } = currentUser;
+        localStorage.setItem('quiziverse_user', JSON.stringify(safeUser));
       } else {
         localStorage.removeItem('quiziverse_user');
-        api.setToken(null);
       }
     } catch (e) {
-      console.warn('[AUTH STORAGE] Could not persist user to localStorage:', e);
+      console.warn('[AUTH STORAGE] Could not persist user profile to localStorage:', e);
     }
   }, [currentUser]);
 
-  // Sync profile on mount if token exists
+  // Authenticate session on mount if token exists
   useEffect(() => {
     const token = api.getToken();
-    if (token) {
-      api.get('/auth/me')
-        .then(res => {
-          if (res?.data?.user) {
-            setCurrentUser(prev => ({ ...prev, ...res.data.user }));
-          }
-        })
-        .catch(() => {
-          // Keep offline state if server is not yet running
-        });
+    if (!token) {
+      setCurrentUser(null);
+      setLoading(false);
+      return;
     }
+
+    api.get('/auth/me')
+      .then(res => {
+        if (res?.data?.user) {
+          setCurrentUser(res.data.user);
+        } else {
+          api.setToken(null);
+          setCurrentUser(null);
+        }
+      })
+      .catch((err) => {
+        // If server returns 401/403 or invalid token, clear session
+        if (err.status === 401 || err.status === 403) {
+          api.setToken(null);
+          setCurrentUser(null);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
-  const login = async (email, password, roleOverride = null) => {
+  const login = async (email, password) => {
     setLoading(true);
-
-    // Fast-path demo shortcuts
-    if (roleOverride === 'admin' || (email && email.toLowerCase().includes('admin'))) {
-      setCurrentUser(demoUsers.admin);
-      api.setToken('mock-admin-jwt-token');
-      setLoading(false);
-      return { success: true, user: demoUsers.admin };
-    }
-
-    if (roleOverride === 'teacher' || (email && email.toLowerCase().includes('teacher'))) {
-      setCurrentUser(demoUsers.teacher);
-      api.setToken('mock-teacher-jwt-token');
-      setLoading(false);
-      return { success: true, user: demoUsers.teacher };
-    }
-
-    if (roleOverride === 'student') {
-      setCurrentUser(demoUsers.student);
-      api.setToken('mock-student-jwt-token');
-      setLoading(false);
-      return { success: true, user: demoUsers.student };
-    }
 
     try {
       const response = await api.post('/auth/login', { email, password });
       if (response?.data?.user && response?.data?.token) {
         api.setToken(response.data.token);
-        setCurrentUser(response.data.user);
+        const { password_hash, password, ...safeUser } = response.data.user;
+        setCurrentUser(safeUser);
         setLoading(false);
-        return { success: true, user: response.data.user };
+        return { success: true, user: safeUser };
       }
+      throw new Error(response?.message || 'Invalid email or password.');
     } catch (err) {
-      // If backend is offline during frontend-only runs, fallback to mock user
-      console.warn('[AUTH NOTICE] Backend login endpoint returned notice. Using local profile:', err.message);
+      setLoading(false);
+      const friendlyMessage = err.status === 401 
+        ? 'Invalid email or password.' 
+        : (err.message || 'Failed to sign in. Please try again.');
+      return { success: false, error: friendlyMessage };
     }
-
-    const fallbackUser = {
-      ...demoUsers.student,
-      email: email || demoUsers.student.email,
-      name: email ? email.split('@')[0] : demoUsers.student.name
-    };
-    setCurrentUser(fallbackUser);
-    setLoading(false);
-    return { success: true, user: fallbackUser };
   };
 
   const register = async ({ name, email, password, grade }) => {
@@ -109,42 +96,31 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/register', { name, email, password, grade });
       if (response?.data?.user && response?.data?.token) {
         api.setToken(response.data.token);
-        setCurrentUser(response.data.user);
+        const { password_hash, password, ...safeUser } = response.data.user;
+        setCurrentUser(safeUser);
         setLoading(false);
-        return { success: true, user: response.data.user };
+        return { success: true, user: safeUser };
       }
+      throw new Error(response?.message || 'Registration failed.');
     } catch (err) {
-      console.warn('[AUTH NOTICE] Using local registration fallback:', err.message);
+      setLoading(false);
+      const friendlyMessage = err.status === 409
+        ? 'An account with this email address already exists.'
+        : (err.message || 'Registration failed. Please try again.');
+      return { success: false, error: friendlyMessage };
     }
-
-    const newUser = {
-      id: `usr-${Date.now()}`,
-      name,
-      email,
-      role: 'student',
-      grade: grade || 'Undergraduate',
-      points: 100,
-      xp: 200,
-      level: 1,
-      streak: 1,
-      rank: 25,
-      quizzesAttempted: 0,
-      averagePercentage: 0
-    };
-
-    setCurrentUser(newUser);
-    setLoading(false);
-    return { success: true, user: newUser };
   };
 
   const logout = () => {
     setCurrentUser(null);
     api.setToken(null);
+    localStorage.removeItem('quiziverse_user');
   };
 
   const updateUserStats = (pointsEarned, xpEarned, percentage, gamification = null) => {
     if (!currentUser) return;
     setCurrentUser(prev => {
+      if (!prev) return null;
       const newAttempts = (prev.quizzesAttempted || 0) + 1;
       const prevTotalScore = ((prev.averagePercentage || 0) * (prev.quizzesAttempted || 0));
       const newAvg = Number(((prevTotalScore + percentage) / newAttempts).toFixed(1));
@@ -188,7 +164,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!currentUser,
         isAdmin: currentUser?.role === 'admin',
         isTeacher: currentUser?.role === 'teacher' || currentUser?.role === 'admin',
-        isStudent: currentUser?.role === 'student'
+        isStudent: currentUser?.role === 'student' || !currentUser?.role
       }}
     >
       {children}

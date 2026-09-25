@@ -7,7 +7,7 @@ import { config } from '../../config/index.js';
 export class GeminiProvider {
   constructor(apiKey = config.ai.apiKey) {
     this.apiKey = apiKey;
-    this.model = 'gemini-1.5-flash';
+    this.model = 'gemini-3.6-flash';
     this.endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent?key=${this.apiKey}`;
   }
 
