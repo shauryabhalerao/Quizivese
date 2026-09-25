@@ -5,6 +5,8 @@ import { hashPassword, comparePassword } from '../utils/password.js';
 import { generateToken } from '../utils/jwt.js';
 import { pool } from '../config/db.js';
 import { sendPasswordResetEmail } from '../services/email.service.js';
+import supabase from '../config/supabase.js';
+
 
 // In-memory fallback store for offline development when PostgreSQL is not running
 let mockUsers = [
@@ -51,12 +53,45 @@ export const register = async (req, res, next) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    const userId = `usr-${Date.now()}`;
+
+    // 1. Call Supabase Auth signUp to create user in auth.users
+    let supabaseUser = null;
+    let supabaseSession = null;
+    let supabaseAuthError = null;
+
+    try {
+      const { data: sbData, error: sbErr } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password: password,
+        options: {
+          data: {
+            name: name.trim(),
+            grade: grade
+          }
+        }
+      });
+
+      if (sbErr) {
+        supabaseAuthError = sbErr;
+        console.warn('[Supabase Auth Register Warning]:', sbErr.message);
+        if (sbErr.status === 422 || sbErr.message.includes('already registered')) {
+          throw ApiError.conflict('An account with this email address already exists.');
+        }
+      } else if (sbData?.user) {
+        supabaseUser = sbData.user;
+        supabaseSession = sbData.session;
+      }
+    } catch (sbEx) {
+      if (sbEx.statusCode === 409) throw sbEx;
+      console.warn('[Supabase Auth Register Exception]:', sbEx.message);
+    }
+
+    const userId = supabaseUser ? supabaseUser.id : `usr-${Date.now()}`;
     const passwordHash = await hashPassword(password);
 
     let newUser = null;
 
-    // Attempt PostgreSQL insertion
+    // 2. Sync profile into PostgreSQL users table or mockUsers
     try {
       const checkResult = await pool.query('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
       if (checkResult.rows.length > 0) {
@@ -72,10 +107,8 @@ export const register = async (req, res, next) => {
 
       newUser = insertResult.rows[0];
     } catch (dbErr) {
-      // If error is 409 Conflict, rethrow directly
       if (dbErr.statusCode === 409) throw dbErr;
 
-      // Graceful sync to memory store if PostgreSQL is offline
       const existing = mockUsers.find(u => u.email === normalizedEmail);
       if (existing) {
         throw ApiError.conflict('An account with this email address already exists.');
@@ -105,10 +138,9 @@ export const register = async (req, res, next) => {
       name: newUser.name
     });
 
-    // Sanitize user output (never return password_hash)
     const { password_hash, ...safeUser } = newUser;
 
-    return sendCreated(res, { user: safeUser, token }, 'Registration successful');
+    return sendCreated(res, { user: safeUser, token, supabaseSession }, 'Registration successful');
   } catch (error) {
     next(error);
   }
@@ -123,9 +155,31 @@ export const login = async (req, res, next) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    let user = null;
 
-    // Query Database
+    // 1. Authenticate with Supabase Auth first
+    let supabaseAuthSuccess = false;
+    let supabaseUser = null;
+    let supabaseSession = null;
+
+    try {
+      const { data: sbData, error: sbErr } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: password
+      });
+
+      if (!sbErr && sbData?.user) {
+        supabaseAuthSuccess = true;
+        supabaseUser = sbData.user;
+        supabaseSession = sbData.session;
+      } else if (sbErr) {
+        console.warn('[Supabase Auth Login Warning]:', sbErr.message);
+      }
+    } catch (sbEx) {
+      console.warn('[Supabase Auth Login Exception]:', sbEx.message);
+    }
+
+    // 2. Query Database / Mock store
+    let user = null;
     try {
       const dbResult = await pool.query('SELECT * FROM users WHERE email = $1', [normalizedEmail]);
       if (dbResult.rows.length > 0) {
@@ -135,18 +189,36 @@ export const login = async (req, res, next) => {
       user = mockUsers.find(u => u.email === normalizedEmail);
     }
 
-    if (!user) {
-      throw ApiError.unauthorized('Invalid email or password.');
-    }
+    // Validate credentials locally if Supabase Auth didn't explicitly succeed
+    if (!supabaseAuthSuccess) {
+      if (!user) {
+        throw ApiError.unauthorized('Invalid email or password.');
+      }
 
-    // Strictly verify bcrypt Password Hash
-    let isPasswordValid = false;
-    if (user.password_hash) {
-      isPasswordValid = await comparePassword(password, user.password_hash);
-    }
+      let isPasswordValid = false;
+      if (user.password_hash) {
+        isPasswordValid = await comparePassword(password, user.password_hash);
+      }
 
-    if (!isPasswordValid) {
-      throw ApiError.unauthorized('Invalid email or password.');
+      if (!isPasswordValid) {
+        throw ApiError.unauthorized('Invalid email or password.');
+      }
+    } else {
+      // If user profile doesn't exist locally, instantiate safe profile
+      if (!user) {
+        user = {
+          id: supabaseUser.id,
+          name: supabaseUser.user_metadata?.name || normalizedEmail.split('@')[0],
+          email: normalizedEmail,
+          role: 'student',
+          grade: supabaseUser.user_metadata?.grade || 'Undergraduate',
+          points: 100,
+          xp: 200,
+          level: 1,
+          current_streak: 1
+        };
+        mockUsers.push(user);
+      }
     }
 
     // Update last_active_at in DB
@@ -166,7 +238,7 @@ export const login = async (req, res, next) => {
 
     const { password_hash, reset_password_token, reset_password_code, reset_password_expires, ...safeUser } = user;
 
-    return sendSuccess(res, { user: safeUser, token }, 'Login successful');
+    return sendSuccess(res, { user: safeUser, token, supabaseSession }, 'Login successful');
   } catch (error) {
     next(error);
   }
