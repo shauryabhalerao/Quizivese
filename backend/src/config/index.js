@@ -46,9 +46,9 @@ export const config = {
   },
 
   supabase: {
-    url: process.env.SUPABASE_URL || 'https://yikusqtmtfageekunycj.supabase.co',
-    key: process.env.SUPABASE_KEY || 'sb_publishable_8poTMoDD-dkEA_jRTje7Xg_O4U1FRTM',
-    projectId: process.env.SUPABASE_PROJECT_ID || 'yikusqtmtfageekunycj'
+    url: process.env.SUPABASE_URL || 'https://placeholder.supabase.co',
+    key: process.env.SUPABASE_KEY || 'placeholder-key',
+    projectId: process.env.SUPABASE_PROJECT_ID || ''
   }
 };
 

@@ -1,7 +1,6 @@
 -- ============================================================================
 -- SUPABASE AUTH & PROFILES SCHEMA WITH ROW LEVEL SECURITY & AUTO-TRIGGER
--- Run this script inside Supabase Dashboard -> SQL Editor
--- Project ID: yikusqtmtfageekunycj
+-- Run this script inside your new Supabase Dashboard -> SQL Editor
 -- ============================================================================
 
 -- 1. CREATE PUBLIC.PROFILES TABLE
